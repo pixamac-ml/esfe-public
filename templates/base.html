@@ -9,7 +9,11 @@
 
     <!-- Tailwind CSS (local build) -->
     <link rel="stylesheet" href="{% static 'public/css/main.css' %}">
+
 </head>
+{% if debug %}
+<script src="{% url 'django_browser_reload:script' %}"></script>
+{% endif %}
 
 <body class="min-h-screen flex flex-col bg-gray-50 text-gray-800 antialiased">
 
