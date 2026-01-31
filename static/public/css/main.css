@@ -563,12 +563,12 @@ video {
   margin-right: auto;
 }
 
-.mt-6 {
-  margin-top: 1.5rem;
-}
-
 .mt-10 {
   margin-top: 2.5rem;
+}
+
+.mt-6 {
+  margin-top: 1.5rem;
 }
 
 .block {
@@ -696,9 +696,9 @@ video {
   text-align: center;
 }
 
-.text-4xl {
-  font-size: 2.25rem;
-  line-height: 2.5rem;
+.text-5xl {
+  font-size: 3rem;
+  line-height: 1;
 }
 
 .text-lg {
@@ -714,11 +714,6 @@ video {
 .text-xl {
   font-size: 1.25rem;
   line-height: 1.75rem;
-}
-
-.text-5xl {
-  font-size: 3rem;
-  line-height: 1;
 }
 
 .font-extrabold {
@@ -808,10 +803,5 @@ video {
 
   .md\:flex-row {
     flex-direction: row;
-  }
-
-  .md\:text-5xl {
-    font-size: 3rem;
-    line-height: 1;
   }
 }
