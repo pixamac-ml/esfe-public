@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% load component_tags %}
+
+{% block title %}
+    {{ formation.title }} – ESFE
+{% endblock %}
+
+{% block content %}
+
+<!-- =========================
+     HEADER FORMATION
+     ========================= -->
+<section class="max-w-3xl">
+
+    <h1 class="text-3xl font-bold text-gray-900">
+        {{ formation.title }}
+    </h1>
+
+    {% if formation.description %}
+        <p class="mt-4 text-lg text-gray-700">
+            {{ formation.description }}
+        </p>
+    {% endif %}
+
+    {% if formation.duration %}
+        <p class="mt-3 text-sm text-gray-500">
+            Durée : {{ formation.duration }}
+        </p>
+    {% endif %}
+
+</section>
+
+<!-- =========================
+     CTA INSCRIPTION (MODAL)
+     ========================= -->
+<section class="mt-8">
+
+    {% component "modal"
+        title="Demande d’inscription – Mali"
+        open_label="S’inscrire à cette formation"
+    %}
+
+        <form class="space-y-4">
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">
+                    Nom complet
+                </label>
+                <input
+                    type="text"
+                    class="mt-1 w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="Votre nom"
+                >
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">
+                    Adresse email
+                </label>
+                <input
+                    type="email"
+                    class="mt-1 w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="email@example.com"
+                >
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">
+                    Numéro de téléphone
+                </label>
+                <input
+                    type="tel"
+                    class="mt-1 w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="+223 ..."
+                >
+            </div>
+
+            <div class="pt-4 flex justify-end gap-3">
+                <button
+                    type="button"
+                    @click="open = false"
+                    class="px-4 py-2 rounded-md bg-gray-100 hover:bg-gray-200"
+                >
+                    Annuler
+                </button>
+
+                <button
+                    type="submit"
+                    class="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                >
+                    Envoyer la demande
+                </button>
+            </div>
+
+        </form>
+
+    {% endcomponent %}
+
+</section>
+
+<!-- =========================
+     OBJECTIFS (ACCORDION)
+     ========================= -->
+<section class="mt-14 max-w-3xl">
+
+    {% component "section_header"
+        title="Objectifs de la formation"
+        subtitle="Ce que vous apprendrez"
+    %}
+    {% endcomponent %}
+
+    {% if formation.objectives %}
+        {% component "accordion"
+            title="Objectifs pédagogiques"
+            open=True
+        %}
+            <ul class="list-disc pl-6 space-y-2">
+                {% for obj in formation.objectives %}
+                    <li>{{ obj }}</li>
+                {% endfor %}
+            </ul>
+        {% endcomponent %}
+    {% else %}
+        <p class="text-sm text-gray-500 mt-4">
+            Les objectifs pédagogiques seront communiqués prochainement.
+        </p>
+    {% endif %}
+
+</section>
+
+{% endblock %}

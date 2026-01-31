@@ -1,0 +1,20 @@
+<div x-data="{ open: {{ open|yesno:'true,false' }} }"
+     class="border rounded-md bg-white">
+
+  <!-- Header -->
+  <button
+    @click="open = !open"
+    class="w-full flex items-center justify-between px-5 py-4 text-left"
+  >
+    <span class="font-medium text-gray-900">
+      {{ title }}
+    </span>
+    <span class="text-gray-500" x-text="open ? '−' : '+'"></span>
+  </button>
+
+  <!-- Content -->
+  <div x-show="open" x-transition class="px-5 pb-4 text-gray-700">
+    {% block content %}{% endblock %}
+  </div>
+
+</div>

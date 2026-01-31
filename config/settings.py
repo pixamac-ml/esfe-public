@@ -39,16 +39,21 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_components",
 
+    "ui.apps.UiConfig",  # 👈 PAS juste "ui"
     # Third-party (plus tard)
-     "django_components",
      "django_browser_reload",
     # Local apps (à venir)
      "core",
      "blog",
      "news",
-    "ui",
+    "formations",
 ]
+
+COMPONENTS = {
+    "template_cache_size": 128,
+}
 
 
 # --------------------------------------------------
@@ -84,12 +89,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-
-        # Templates globaux (IMPORTANT)
-        "DIRS": [
-            BASE_DIR / "templates",
-        ],
-
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -97,6 +97,9 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+            ],
+            "builtins": [
+                "django_components.templatetags.component_tags",
             ],
         },
     },

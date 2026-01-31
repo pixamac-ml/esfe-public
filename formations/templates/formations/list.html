@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load component_tags %}
+
+{% block title %}Nos formations – ESFE{% endblock %}
+
+{% block content %}
+
+{# =========================
+   EN-TÊTE DE PAGE
+   ========================= #}
+{% component "section_header"
+    title="Nos formations"
+    subtitle="Découvrez nos parcours de formation"
+%}
+{% endcomponent %}
+
+{# =========================
+   LISTE DES FORMATIONS
+   ========================= #}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+
+    {% for f in formations %}
+        {% component "formation_card"
+            title=f.title
+            description=f.description
+            duration=f.duration
+            href=f.url
+        %}
+        {% endcomponent %}
+    {% empty %}
+        <p class="text-gray-600">
+            Aucune formation disponible pour le moment.
+        </p>
+    {% endfor %}
+
+</div>
+
+{% endblock %}

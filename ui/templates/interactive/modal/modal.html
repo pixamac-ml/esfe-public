@@ -1,0 +1,56 @@
+<div x-data="{ open: false }" class="inline-block">
+
+  <!-- Bouton d’ouverture -->
+  <button
+    @click="open = true"
+    class="px-5 py-2.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition"
+  >
+    {{ open_label }}
+  </button>
+
+  <!-- Overlay -->
+  <div
+    x-show="open"
+    x-transition
+    class="fixed inset-0 z-40 bg-black/50"
+    @click="open = false"
+  ></div>
+
+  <!-- Modal -->
+  <div
+    x-show="open"
+    x-transition
+    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    aria-modal="true"
+    role="dialog"
+  >
+    <div class="bg-white rounded-lg shadow-xl max-w-lg w-full">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b">
+        <h3 class="text-lg font-semibold text-gray-900">
+          {{ title }}
+        </h3>
+        <button @click="open = false" class="text-gray-400 hover:text-gray-600">
+          ✕
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="px-6 py-4">
+        {% block content %}{% endblock %}
+      </div>
+
+      <!-- Footer -->
+      <div class="px-6 py-4 border-t flex justify-end gap-3">
+        <button
+          @click="open = false"
+          class="px-4 py-2 rounded-md bg-gray-100 hover:bg-gray-200"
+        >
+          Fermer
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>

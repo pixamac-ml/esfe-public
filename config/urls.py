@@ -23,6 +23,7 @@ def home(request):
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("formations/", include("formations.urls")),
     path("", home),
     path("__reload__/", include("django_browser_reload.urls")),
 ]

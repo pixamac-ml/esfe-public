@@ -1,14 +1,170 @@
 {% extends "base.html" %}
+{% load component_tags %}
 
 {% block title %}Accueil – ESFE{% endblock %}
 
 {% block content %}
-<section class="py-16">
-    <h1 class="text-4xl font-bold text-blue-600">
-        Bienvenue à l’ESFE
-    </h1>
-    <p class="mt-4 text-lg text-gray-600 max-w-2xl">
-        Plateforme académique moderne dédiée aux sciences de la santé.
+
+{# ======================================================
+   HERO PRINCIPAL
+   ====================================================== #}
+{% component "hero"
+    title="Bienvenue à l’ESFE"
+    subtitle="Une institution dédiée à l’excellence dans les sciences de la santé"
+    cta_label="Découvrir nos formations"
+    cta_href="#"
+%}
+{% endcomponent %}
+
+{# ======================================================
+   SECTION : ORIENTATION / NAVIGATION
+   ====================================================== #}
+{% component "section_header"
+    title="Explorer l’ESFE"
+    subtitle="Accédez rapidement aux principales rubriques"
+%}
+{% endcomponent %}
+
+<div class="flex flex-wrap items-center gap-4">
+
+    {% component "button"
+        label="Nos formations"
+        href="#"
+        variant="primary"
+    %}
+    {% endcomponent %}
+
+    {% component "button"
+        label="Blog"
+        href="#"
+        variant="secondary"
+    %}
+    {% endcomponent %}
+
+    {% component "button"
+        label="Actualités"
+        href="#"
+        variant="outline"
+    %}
+    {% endcomponent %}
+
+</div>
+
+{# ======================================================
+   SECTION : COMPOSANTS INTERACTIFS (TEST + UX)
+   ====================================================== #}
+<div class="mt-16">
+
+    {% component "section_header"
+        title="Accès rapide"
+        subtitle="Exemple d’interaction avec Alpine.js"
+    %}
+    {% endcomponent %}
+
+    <div class="flex items-center gap-6">
+
+        {# Dropdown Alpine #}
+        {% component "dropdown" label="Menu rapide" %}
+            <a href="#" class="block px-4 py-2 hover:bg-gray-100">
+                Blog
+            </a>
+            <a href="#" class="block px-4 py-2 hover:bg-gray-100">
+                Actualités
+            </a>
+            <a href="#" class="block px-4 py-2 hover:bg-gray-100">
+                Contact
+            </a>
+        {% endcomponent %}
+
+    </div>
+
+</div>
+
+{# ======================================================
+   SECTION : MESSAGE INSTITUTIONNEL (PLACEHOLDER)
+   ====================================================== #}
+<div class="mt-20 bg-white border rounded-lg p-8">
+
+    {% component "section_header"
+        title="Une formation tournée vers l’avenir"
+        subtitle="Des programmes conçus pour répondre aux exigences du secteur de la santé"
+    %}
+    {% endcomponent %}
+
+    <p class="text-lg text-gray-700 max-w-3xl">
+        L’ESFE accompagne les étudiants et professionnels à travers des formations
+        rigoureuses, encadrées par des experts, et alignées sur les réalités du terrain.
     </p>
-</section>
+
+</div>
+
+
+{# ===== TEST MODAL ===== #}
+<div class="mt-16">
+
+  {% component "section_header"
+      title="Test Modal"
+      subtitle="Ouverture et fermeture avec Alpine.js"
+  %}
+  {% endcomponent %}
+
+  {% component "modal" title="Inscription rapide" open_label="Ouvrir le formulaire" %}
+      <p class="text-gray-700">
+          Ceci est un contenu de test dans le modal.
+          Tu peux y mettre un formulaire, un texte, ou une confirmation.
+      </p>
+  {% endcomponent %}
+
+</div>
+
+
+{# ===== TEST ACCORDION ===== #}
+<div class="mt-16">
+
+  {% component "section_header"
+      title="Questions fréquentes"
+      subtitle="Test du composant accordion"
+  %}
+  {% endcomponent %}
+
+  <div class="space-y-4 max-w-2xl">
+
+    {% component "accordion" title="Comment s’inscrire ?" open=True %}
+      <p>
+        L’inscription se fait en ligne via notre plateforme.
+        Il suffit de remplir le formulaire et notre équipe vous contactera.
+      </p>
+    {% endcomponent %}
+
+    {% component "accordion" title="Quels sont les prérequis ?" %}
+      <p>
+        Les prérequis dépendent de la formation choisie.
+        Chaque programme précise ses conditions d’accès.
+      </p>
+    {% endcomponent %}
+
+    {% component "accordion" title="Les formations sont-elles reconnues ?" %}
+      <p>
+        Oui, nos formations sont conçues selon les standards
+        académiques et professionnels du secteur de la santé.
+      </p>
+    {% endcomponent %}
+
+  </div>
+
+</div>
+
+<div class="space-y-6 max-w-6xl mt-8">
+
+        {% component "formation_card"
+       title="Infirmier d’État"
+       description="Formation complète et reconnue."
+       duration="3 ans"
+       href="#"%}
+    {% endcomponent %}
+
+</div>
+
+
+
 {% endblock %}
