@@ -44,9 +44,9 @@ INSTALLED_APPS = [
     # "django_components",
 
     # Local apps (à venir)
-    # "site",
-    # "blog",
-    # "news",
+     "core",
+     "blog",
+     "news",
 ]
 
 
