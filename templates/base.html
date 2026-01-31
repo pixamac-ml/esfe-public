@@ -1,4 +1,4 @@
-{% load static %}
+{% load static component_tags %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -7,66 +7,30 @@
 
     <title>{% block title %}ESFE{% endblock %}</title>
 
-    <!-- Tailwind CSS (local build) -->
+    <!-- Tailwind CSS -->
     <link rel="stylesheet" href="{% static 'public/css/main.css' %}">
 
+    {% block extra_head %}{% endblock %}
 </head>
-{% if debug %}
-<script src="{% url 'django_browser_reload:script' %}"></script>
-{% endif %}
 
 <body class="min-h-screen flex flex-col bg-gray-50 text-gray-800 antialiased">
 
-    <!-- ================= HEADER ================= -->
-    <header class="bg-white border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <div class="text-xl font-semibold tracking-wide text-gray-900">
-                ESFE
-            </div>
+    {# ================= NAVBAR ================= #}
+    {% component "navbar" %}
+    {% endcomponent %}
 
-            <nav class="hidden md:flex items-center space-x-8 text-sm font-medium">
-                <a href="#" class="text-gray-700 hover:text-blue-600 transition">
-                    Accueil
-                </a>
-                <a href="#" class="text-gray-700 hover:text-blue-600 transition">
-                    Formations
-                </a>
-                <a href="#" class="text-gray-700 hover:text-blue-600 transition">
-                    Blog
-                </a>
-                <a href="#" class="text-gray-700 hover:text-blue-600 transition">
-                    Actualités
-                </a>
-                <a href="#" class="text-gray-700 hover:text-blue-600 transition">
-                    Contact
-                </a>
-            </nav>
-        </div>
-    </header>
-
-    <!-- ================= MAIN ================= -->
+    {# ================= MAIN ================= #}
     <main class="flex-grow">
         <div class="max-w-7xl mx-auto px-6 py-12">
             {% block content %}{% endblock %}
         </div>
     </main>
 
-    <!-- ================= FOOTER ================= -->
-    <footer class="bg-white border-t border-gray-200">
-        <div class="max-w-7xl mx-auto px-6 py-6 text-sm text-gray-500 flex flex-col md:flex-row justify-between gap-4">
-            <div>
-                © {% now "Y" %} ESFE – Tous droits réservés
-            </div>
-            <div class="flex space-x-6">
-                <a href="#" class="hover:text-gray-700 transition">
-                    Mentions légales
-                </a>
-                <a href="#" class="hover:text-gray-700 transition">
-                    Politique de confidentialité
-                </a>
-            </div>
-        </div>
-    </footer>
+    {# ================= FOOTER ================= #}
+    {% component "footer" %}
+    {% endcomponent %}
+
+    {% block extra_js %}{% endblock %}
 
 </body>
 </html>
