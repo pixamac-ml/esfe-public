@@ -1,28 +1,101 @@
-<section class="bg-white py-20">
-    <div class="max-w-7xl mx-auto px-6">
+{% load static %}
 
-        <div class="max-w-3xl">
-            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 leading-tight">
-                {{ title }}
-            </h1>
+<section class="relative h-screen w-full overflow-hidden">
 
-            {% if subtitle %}
-            <p class="mt-6 text-xl text-gray-600">
-                {{ subtitle }}
-            </p>
-            {% endif %}
+  <!-- BACKGROUND -->
+  <img src="{% static 'images/hero-bg.jpg' %}"
+       class="absolute inset-0 w-full h-full object-cover">
 
-            {% if cta_label %}
-            <div class="mt-8">
-                <a href="{{ cta_href }}"
-                   class="inline-flex items-center justify-center rounded-md
-                          bg-blue-600 px-6 py-3 text-base font-medium text-white
-                          hover:bg-blue-700 transition">
-                    {{ cta_label }}
-                </a>
-            </div>
-            {% endif %}
-        </div>
+  <!-- PATTERN -->
+  <div class="absolute inset-0"
+       style="background-image:url('{% static 'images/patterns/contours.svg' %});
+              opacity:0.25;"></div>
+
+  <!-- OVERLAY -->
+  <div class="absolute inset-0 bg-black/55"></div>
+
+  <!-- LOGO -->
+  <div class="absolute top-6 left-6 z-20">
+    <img src="{% static 'images/logo-esfe.png' %}"
+         class="h-20 md:h-24 opacity-95">
+  </div>
+
+  <!-- CONTENU -->
+  <div class="relative z-10 h-full flex flex-col items-center justify-center text-white px-6">
+
+    <!-- LIGNE ESFE + VILLE (MÊME LIGNE, MÊME FLUX) -->
+    <div
+      class="flex items-center justify-center
+             transition-all duration-700 ease-in-out"
+      x-data="heroLetterDance(['Abidjan','Kati','koulikoro','San','Gao','Bobo'])"
+      x-init="init()"
+      :style="open ? 'gap:1.25rem' : 'gap:0rem'"
+    >
+
+      <!-- ESFE -->
+      <span
+        class="text-7xl md:text-9xl font-bold font-poppins tracking-wide
+               transition-transform duration-700 ease-in-out"
+        :class="open ? '-translate-x-6' : 'translate-x-0'"
+      >
+        ESFE
+      </span>
+
+      <!-- VILLE + CURSEUR -->
+      <span
+        class="flex items-center overflow-hidden
+               transition-opacity duration-700 ease-in-out"
+        :class="open ? 'opacity-100' : 'opacity-0'"
+      >
+        <template x-for="(char, i) in letters" :key="i">
+          <span
+            class="inline-block text-7xl md:text-9xl font-bold font-poppins
+                   opacity-0 translate-y-1
+                   transition-all duration-700
+                   ease-[cubic-bezier(0.20,1,0.5,1)]"
+            :class="open ? 'opacity-100 translate-y-0' : ''"
+            x-text="char"
+          ></span>
+        </template>
+
+        <!-- CURSEUR -->
+        <span
+          class="ml-3 font-bold opacity-80
+                 text-7xl md:text-9xl
+                 leading-none select-none
+                 transition-opacity duration-300"
+          :class="cursorBlink ? 'animate-pulse' : ''"
+        >
+          |
+        </span>
+
+      </span>
 
     </div>
+
+  </div>
+
+  <!-- FLÈCHE -->
+  <!-- FLÈCHE DIRECTIONNELLE -->
+  <div
+    class="absolute bottom-10 left-1/2 -translate-x-1/2 z-20"
+    x-data="{ visible: true }"
+    x-init="
+      window.addEventListener('scroll', () => {
+        visible = window.scrollY < 60
+      })
+    "
+    x-show="visible"
+    x-transition.opacity.duration.700ms
+  >
+    <button
+      onclick="document.getElementById('explorer')?.scrollIntoView({ behavior: 'smooth' })"
+      class="text-white text-4xl md:text-5xl arrow-breathe
+             transition-opacity duration-500"
+      aria-label="Scroll vers le contenu"
+    >
+      ↓
+    </button>
+  </div>
+
 </section>

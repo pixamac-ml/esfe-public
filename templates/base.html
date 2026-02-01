@@ -2,37 +2,127 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}ESFE{% endblock %}</title>
 
-    <title>{% block title %}ESFE{% endblock %}</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 
-    <!-- Tailwind CSS -->
-    <link rel="stylesheet" href="{% static 'public/css/main.css' %}">
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- Tailwind CSS -->
+  <link rel="stylesheet" href="{% static 'public/css/main.css' %}">
 
-
-    {% block extra_head %}{% endblock %}
+  <!-- Alpine.js -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 
-<body class="min-h-screen flex flex-col bg-gray-50 text-gray-800 antialiased">
+<body class="min-h-screen flex flex-col bg-gray-50 text-gray-800 font-roboto antialiased">
 
-    {# ================= NAVBAR ================= #}
-    {% component "navbar" %}
-    {% endcomponent %}
+  <!-- NAVBAR -->
+<div
+  x-data="{ visible: false }"
+  x-init="
+    let lastScroll = 0;
+    window.addEventListener('scroll', () => {
+      const current = window.scrollY;
+      visible = current > window.innerHeight * 0.6;
+      lastScroll = current;
+    })
+  "
+  class="fixed top-0 left-0 w-full z-50 pointer-events-none"
+>
+  <div
+    x-show="visible"
+    x-transition.opacity.duration.400ms
+    :class="visible ? 'navbar-enter' : 'navbar-leave'"
+    class="pointer-events-auto"
+  >
+    {% component "navbar" %}{% endcomponent %}
+  </div>
+</div>
 
-    {# ================= MAIN ================= #}
-    <main class="flex-grow">
-        <div class="max-w-7xl mx-auto px-6 py-12">
-            {% block content %}{% endblock %}
-        </div>
-    </main>
+  <!-- PAGE CONTENT -->
+  <main class="flex-grow">
+    {% block content %}{% endblock %}
+  </main>
 
-    {# ================= FOOTER ================= #}
-    {% component "footer" %}
-    {% endcomponent %}
+  <!-- FOOTER -->
+  <footer class="border-t text-sm text-gray-500">
+    <div class="max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row justify-between gap-4">
+      <span>© 2026 ESFE – Tous droits réservés</span>
+      <div class="flex gap-4">
+        <a href="#" class="hover:text-gray-700">Mentions légales</a>
+        <a href="#" class="hover:text-gray-700">Politique de confidentialité</a>
+      </div>
+    </div>
+  </footer>
 
-    {% block extra_js %}{% endblock %}
+  <!-- ===================================================== -->
+  <!-- ALPINE SCRIPT UNIQUE – HERO LETTER DANCE (FINAL) -->
+  <!-- ===================================================== -->
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('heroLetterDance', (words = []) => ({
+    words,
+    index: 0,
+    letters: [],
+    open: false,
+    cursorBlink: false,
+
+    typeSpeed: 230,        // écriture plus lente
+    deleteSpeed: 150,     // fermeture plus soyeuse
+    pauseAfterType: 4800, // vraie pause de lecture
+
+    init() {
+      if (!this.words.length) return
+      this.run()
+    },
+
+    async run() {
+      const word = this.words[this.index]
+
+      /* ÉTAT INITIAL */
+      this.letters = []
+      this.open = false
+      this.cursorBlink = false
+      // respiration avant la première lettre
+      await this.sleep(700)
+
+
+      /* OUVERTURE */
+      this.open = true
+      for (let char of word) {
+        this.letters.push(char)
+        await this.sleep(this.typeSpeed + Math.random() * 70)
+      }
+
+      /* LECTURE */
+      this.cursorBlink = true
+      await this.sleep(this.pauseAfterType)
+
+      /* FERMETURE */
+      this.cursorBlink = false
+      while (this.letters.length) {
+        this.letters.pop()
+        await this.sleep(this.deleteSpeed + Math.random() * 60)
+      }
+
+      this.open = false
+      await this.sleep(900)
+
+      /* SUIVANT */
+      this.index = (this.index + 1) % this.words.length
+      this.run()
+    },
+
+    sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms))
+    }
+  }))
+})
+</script>
 
 </body>
 </html>

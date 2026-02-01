@@ -35,10 +35,12 @@
      ========================= -->
 <section class="mt-8">
 
-    {% component "modal"
-        title="Demande d’inscription – Mali"
-        open_label="S’inscrire à cette formation"
-    %}
+{% component "modal"
+    title="Demande d’inscription – Mali"
+    open_label="S’inscrire à cette formation"
+%}
+
+    {% fill "content" %}
 
         <form class="space-y-4">
 
@@ -48,6 +50,8 @@
                 </label>
                 <input
                     type="text"
+                    name="full_name"
+                    required
                     class="mt-1 w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     placeholder="Votre nom"
                 >
@@ -59,6 +63,8 @@
                 </label>
                 <input
                     type="email"
+                    name="email"
+                    required
                     class="mt-1 w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     placeholder="email@example.com"
                 >
@@ -70,20 +76,14 @@
                 </label>
                 <input
                     type="tel"
+                    name="phone"
+                    required
                     class="mt-1 w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="+223 ..."
+                    placeholder="+223 …"
                 >
             </div>
 
             <div class="pt-4 flex justify-end gap-3">
-                <button
-                    type="button"
-                    @click="open = false"
-                    class="px-4 py-2 rounded-md bg-gray-100 hover:bg-gray-200"
-                >
-                    Annuler
-                </button>
-
                 <button
                     type="submit"
                     class="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
@@ -94,7 +94,9 @@
 
         </form>
 
-    {% endcomponent %}
+    {% endfill %}
+
+{% endcomponent %}
 
 </section>
 

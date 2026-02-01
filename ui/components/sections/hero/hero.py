@@ -6,14 +6,16 @@ class Hero(component.Component):
 
     def get_context_data(
         self,
-        title="",
+        title="ESFE",
         subtitle="",
-        cta_label="",
-        cta_href="#"
+        image_url="",
+        next_id="",
+        cities="[]",
     ):
         return {
             "title": title,
             "subtitle": subtitle,
-            "cta_label": cta_label,
-            "cta_href": cta_href,
+            "image_url": image_url,
+            "next_id": next_id,
+            "cities": cities,
         }
