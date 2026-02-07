@@ -1,37 +1,29 @@
 {% extends "base.html" %}
 {% load component_tags %}
 
-{% block title %}Nos formations – ESFE{% endblock %}
+{% block title %}Formations – ESFE{% endblock %}
 
 {% block content %}
 
-{# =========================
-   EN-TÊTE DE PAGE
-   ========================= #}
 {% component "section_header"
-    title="Nos formations"
-    subtitle="Découvrez nos parcours de formation"
-%}
-{% endcomponent %}
+  title="Nos formations"
+  subtitle="Des parcours adaptés aux métiers de la santé"
+%}{% endcomponent %}
 
-{# =========================
-   LISTE DES FORMATIONS
-   ========================= #}
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
 
-    {% for f in formations %}
-        {% component "formation_card"
-            title=f.title
-            description=f.description
-            duration=f.duration
-            href=f.url
-        %}
-        {% endcomponent %}
-    {% empty %}
-        <p class="text-gray-600">
-            Aucune formation disponible pour le moment.
-        </p>
-    {% endfor %}
+  {% for programme in programmes %}
+    {% component "formation_card"
+      title=programme.title
+      description=programme.short_description
+      duration=programme.duration_years|stringformat:"d"|add:" ans"
+      href=programme.get_absolute_url
+    %}{% endcomponent %}
+  {% empty %}
+    <p class="text-gray-500 col-span-full text-center">
+      Aucune formation disponible pour le moment.
+    </p>
+  {% endfor %}
 
 </div>
 

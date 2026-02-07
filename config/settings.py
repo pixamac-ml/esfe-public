@@ -40,15 +40,20 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_components",
+    "admissions.apps.AdmissionsConfig",
 
     "ui.apps.UiConfig",  # 👈 PAS juste "ui"
     # Third-party (plus tard)
      "django_browser_reload",
     # Local apps (à venir)
+    "inscriptions",
+    "payments",
      "core",
      "blog",
      "news",
     "formations",
+    "students",
+
 ]
 
 COMPONENTS = {
@@ -85,7 +90,6 @@ WSGI_APPLICATION = "config.wsgi.application"
 # --------------------------------------------------
 # TEMPLATES
 # --------------------------------------------------
-
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",

@@ -26,4 +26,7 @@ urlpatterns = [
     path("formations/", include("formations.urls")),
     path("", home),
     path("__reload__/", include("django_browser_reload.urls")),
+    path("admissions/", include("admissions.urls")),  # ← OBLIGATOIRE
+    path("inscriptions/", include("inscriptions.urls")),  # ← OBLIGATOIRE
+
 ]

@@ -1,0 +1,38 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Finalisation de l’inscription</h1>
+
+<p><strong>Candidat :</strong> {{ enrollment.application.candidate }}</p>
+<p><strong>Formation :</strong> {{ enrollment.application.programme.title }}</p>
+<p><strong>Année académique :</strong> {{ enrollment.academic_year.label }}</p>
+
+<hr>
+
+<h3>Situation financière</h3>
+
+<ul>
+  {% for fee in fees %}
+    <li>
+      {{ fee.template.label }} :
+      {{ fee.amount_to_pay }} FCFA
+    </li>
+  {% endfor %}
+</ul>
+
+<p><strong>Total :</strong> {{ total_expected }} FCFA</p>
+<p><strong>Déjà payé :</strong> {{ total_paid }} FCFA</p>
+<p><strong>Reste à payer :</strong> {{ remaining_amount }} FCFA</p>
+
+{% if can_pay %}
+  <hr>
+  <p>
+    👉 Procédez au paiement du montant restant.<br>
+    (paiement en ligne ou enregistré par l’administration)
+  </p>
+{% else %}
+  <p>✅ Tous les frais requis sont réglés.</p>
+{% endif %}
+
+{% endblock %}
