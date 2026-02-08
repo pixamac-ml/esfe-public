@@ -1,51 +1,30 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 
-from .models import Application
-from admissions.services import prepare_enrollment
+from .models import Candidature
 
 
-# ==================================================
-# SIGNAL DE SÉCURITÉ (FILET DE PROTECTION)
-# ==================================================
-@receiver(post_save, sender=Application)
-def ensure_enrollment_after_acceptance(
-    sender, instance: Application, created, **kwargs
-):
+@receiver(post_save, sender=Candidature)
+def candidature_status_handler(sender, instance, created, **kwargs):
     """
-    FILET DE SÉCURITÉ INSTITUTIONNEL.
-
-    ⚠️ CE SIGNAL N'EST PAS LE MOTEUR PRINCIPAL.
-    ⚠️ IL EXISTE UNIQUEMENT POUR COUVRIR LES CAS OÙ :
-       - quelqu’un modifie le status via l’admin Django
-       - une migration ou un script bypass Application.accept()
-
-    RÈGLE :
-    - si la candidature est ACCEPTÉE
-    - et qu'aucune inscription n'existe
-    → on prépare l'inscription automatiquement
-
-    ❌ aucune activation
-    ❌ aucun matricule
-    ❌ aucune logique financière avancée
+    Signal déclenché à chaque sauvegarde d’une candidature.
+    Objectif V1 :
+    - détecter une acceptation
+    - préparer le terrain pour l’inscription
     """
 
-    # ❌ Ne rien faire à la création initiale
+    # On ignore la création initiale
     if created:
         return
 
-    # ❌ Ne s’intéresser QU’aux candidatures acceptées
-    if instance.status != Application.STATUS_ACCEPTED:
-        return
-
-    # ❌ Si l’inscription existe déjà → STOP
-    if hasattr(instance, "enrollment"):
-        return
-
-    # ✅ Préparation sécurisée (idempotente)
-    try:
-        prepare_enrollment(instance)
-    except Exception:
-        # ⚠️ ON NE CASSE JAMAIS L’ADMIN DJANGO
-        # Les erreurs doivent être visibles en logs, pas bloquantes
-        pass
+    # Cas métier : candidature acceptée
+    if instance.status in ("accepted", "accepted_with_reserve"):
+        # Pour l’instant, on TRACE seulement
+        # (plus tard : création Inscription)
+        print(
+            f"[SIGNAL] Candidature acceptée : "
+            f"{instance.first_name} {instance.last_name} "
+            f"({instance.programme.title}) "
+            f"à {timezone.now()}"
+        )

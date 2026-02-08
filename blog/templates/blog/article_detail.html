@@ -1,0 +1,28 @@
+<h1>{{ article.title }}</h1>
+<p>{{ article.content|linebreaks }}</p>
+
+<h3>Commentaires</h3>
+
+{% for comment in comments %}
+  <p><strong>{{ comment.author_name }}</strong></p>
+  <p>{{ comment.content }}</p>
+{% endfor %}
+
+{% if article.allow_comments %}
+<form method="post">
+  {% csrf_token %}
+  <input type="text" name="author_name" placeholder="Votre nom" required>
+  <textarea name="content" required></textarea>
+  <button type="submit">Envoyer</button>
+</form>
+{% endif %}
+
+
+<meta property="og:title" content="{{ article.title }}">
+<meta property="og:description" content="{{ article.excerpt }}">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+<meta property="og:type" content="article">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ article.title }}">
+<meta name="twitter:description" content="{{ article.excerpt }}">

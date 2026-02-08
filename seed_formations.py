@@ -4,11 +4,14 @@ from formations.models import (
     Filiere,
     Programme,
     ProgrammeYear,
+    Fee,
+    RequiredDocument,
+    ProgrammeRequiredDocument,
 )
 
-# -----------------------------
+# ==================================================
 # CYCLES
-# -----------------------------
+# ==================================================
 cycles_data = [
     {
         "name": "Cycle Licence",
@@ -37,9 +40,9 @@ for c in cycles_data:
     cycles[c["name"]] = cycle
 
 
-# -----------------------------
+# ==================================================
 # DIPLOMES
-# -----------------------------
+# ==================================================
 diplomas_data = [
     ("Licence", "superieur"),
     ("Master", "superieur"),
@@ -55,9 +58,9 @@ for name, level in diplomas_data:
     diplomas[name] = diploma
 
 
-# -----------------------------
+# ==================================================
 # FILIERES
-# -----------------------------
+# ==================================================
 filieres_names = [
     "Infirmier d’État",
     "Sage-femme",
@@ -76,9 +79,25 @@ for name in filieres_names:
     filieres[name] = filiere
 
 
-# -----------------------------
-# PROGRAMMES (FORMATIONS REELLES)
-# -----------------------------
+# ==================================================
+# DOCUMENTS REQUIS
+# ==================================================
+documents_data = [
+    "Demande timbrée",
+    "Copie extrait de naissance ou jugement supplétif",
+    "Copie légalisée du diplôme (Licence ou équivalent)",
+    "Quatre (04) photos d’identité",
+]
+
+documents = {}
+for name in documents_data:
+    doc, _ = RequiredDocument.objects.get_or_create(name=name)
+    documents[name] = doc
+
+
+# ==================================================
+# PROGRAMMES
+# ==================================================
 programmes_data = [
     {
         "title": "Infirmier d’État",
@@ -133,12 +152,48 @@ for p in programmes_data:
         }
     )
 
-    # Création automatique des années du programme
-    if created:
-        for year in range(1, p["duration"] + 1):
-            ProgrammeYear.objects.get_or_create(
-                programme=programme,
-                year_number=year
-            )
+    # --------------------------------------------------
+    # LIER DOCUMENTS AU PROGRAMME
+    # --------------------------------------------------
+    for doc in documents.values():
+        ProgrammeRequiredDocument.objects.get_or_create(
+            programme=programme,
+            document=doc
+        )
 
-print("✔️ Données de formations créées avec succès.")
+    # --------------------------------------------------
+    # ANNEES + FRAIS
+    # --------------------------------------------------
+    for year in range(1, p["duration"] + 1):
+        programme_year, _ = ProgrammeYear.objects.get_or_create(
+            programme=programme,
+            year_number=year
+        )
+
+        # ===== FRAIS MASTER =====
+        if programme.cycle.name == "Cycle Master":
+
+            if year == 1:
+                fees = [
+                    ("Inscription", 410_000, "Octobre"),
+                    ("1ère tranche", 200_000, "Janvier"),
+                    ("2ème tranche", 200_000, "Mars"),
+                ]
+            elif year == 2:
+                fees = [
+                    ("Inscription", 600_000, "Octobre"),
+                    ("1ère tranche", 300_000, "Janvier"),
+                    ("2ème tranche", 300_000, "Mars"),
+                ]
+
+            for label, amount, month in fees:
+                Fee.objects.get_or_create(
+                    programme_year=programme_year,
+                    label=label,
+                    defaults={
+                        "amount": amount,
+                        "due_month": month,
+                    }
+                )
+
+print("✔️ Formations, années, frais et documents créés avec succès.")

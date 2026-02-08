@@ -1,20 +1,19 @@
-from django.http import HttpResponse
 from django.urls import path
-from . import views
+from .views import apply_to_programme,candidature_confirmation
 
 app_name = "admissions"
 
 urlpatterns = [
     path(
-        "candidature/<slug:programme_slug>/",
-        views.start_application,
-        name="start_application"
+        "s-inscrire/<slug:slug>/",
+        apply_to_programme,
+        name="apply"
     ),
+
     path(
-        "succes/",
-        views.application_success,
-        name="application_success"
+        "confirmation/<int:candidature_id>/",
+        candidature_confirmation,
+        name="confirmation"
     ),
-    path("test/", lambda r: HttpResponse("ADMISSIONS OK")),
 
 ]

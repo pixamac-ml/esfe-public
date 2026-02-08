@@ -1,58 +1,25 @@
+# admissions/forms.py
 from django import forms
-from django.forms import formset_factory
+from .models import Candidature
+from formations.models import RequiredDocument
 
-from .models import Candidate, Application
 
+class CandidatureForm(forms.ModelForm):
 
-# --------------------------------------------------
-# FORMULAIRE CANDIDAT
-# --------------------------------------------------
-class CandidateForm(forms.ModelForm):
     class Meta:
-        model = Candidate
-        fields = [
+        model = Candidature
+        fields = (
             "first_name",
             "last_name",
+            "gender",
             "birth_date",
             "birth_place",
             "phone",
             "email",
             "address",
-        ]
+            "city",
+            "country",
+        )
         widgets = {
             "birth_date": forms.DateInput(attrs={"type": "date"}),
         }
-
-
-# --------------------------------------------------
-# FORMULAIRE CANDIDATURE
-# --------------------------------------------------
-class ApplicationForm(forms.ModelForm):
-    class Meta:
-        model = Application
-        fields = ["motivation"]
-        widgets = {
-            "motivation": forms.Textarea(attrs={
-                "rows": 5,
-                "placeholder": "Expliquez brièvement votre motivation…"
-            }),
-        }
-
-
-# --------------------------------------------------
-# FORMULAIRE SIMPLE POUR UN DOCUMENT
-# --------------------------------------------------
-class RequiredDocumentUploadForm(forms.Form):
-    file = forms.FileField(
-        required=False,
-        widget=forms.ClearableFileInput()
-    )
-
-
-# --------------------------------------------------
-# FORMSET DOCUMENTS (SANS MODELE)
-# --------------------------------------------------
-RequiredDocumentFormSet = formset_factory(
-    RequiredDocumentUploadForm,
-    extra=0
-)

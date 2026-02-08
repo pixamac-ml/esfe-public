@@ -18,13 +18,13 @@ from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import render
 
-def home(request):
-    return render(request, "home.html")
-
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("formations/", include("formations.urls")),
-    path("", home),
+    # CORE (home + pages publiques)
+    path("", include("core.urls")),
+    path('blog/', include('blog.urls')),
+
     path("__reload__/", include("django_browser_reload.urls")),
     path("admissions/", include("admissions.urls")),  # ← OBLIGATOIRE
     path("inscriptions/", include("inscriptions.urls")),  # ← OBLIGATOIRE
