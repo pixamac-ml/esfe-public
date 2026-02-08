@@ -97,7 +97,7 @@ class Application(models.Model):
         ont été fournis ET validés.
         """
         required_docs = RequiredDocument.objects.filter(
-            programrequireddocument__programme=self.programme
+            programmerequireddocument__programme=self.programme
         )
 
         if not required_docs.exists():

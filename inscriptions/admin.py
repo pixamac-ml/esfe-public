@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.urls import reverse
 from django.utils.html import format_html
 
@@ -21,12 +21,23 @@ class AcademicYearAdmin(admin.ModelAdmin):
     search_fields = ("label",)
     ordering = ("-start_date",)
 
-    actions = ["set_as_active_year"]
+    actions = ("set_as_active_year",)
 
     @admin.action(description="Définir comme année académique active")
     def set_as_active_year(self, request, queryset):
-        AcademicYear.objects.update(is_active=False)
-        queryset.update(is_active=True)
+        """
+        Active UNE seule année académique via save()
+        (ne bypass jamais la logique modèle).
+        """
+        for year in queryset:
+            year.is_active = True
+            year.save()
+
+        self.message_user(
+            request,
+            "Année académique définie comme active.",
+            messages.SUCCESS
+        )
 
 
 # ==================================================
@@ -59,10 +70,15 @@ class EnrollmentAdmin(admin.ModelAdmin):
         "application__programme__title",
     )
 
-    # 🔒 Champs techniques non modifiables
+    ordering = ("-enrolled_at",)
+
+    # 🔒 CHAMPS SYSTÈME : STRICTEMENT LECTURE SEULE
     readonly_fields = (
-        "matricule",
+        "application",
+        "academic_year",
+        "status",
         "is_active",
+        "matricule",
         "enrolled_at",
         "validated_at",
         "validated_by",
@@ -72,20 +88,20 @@ class EnrollmentAdmin(admin.ModelAdmin):
     )
 
     fieldsets = (
-        ("Informations générales", {
+        ("Informations générales (lecture seule)", {
             "fields": (
                 "application",
                 "academic_year",
                 "status",
             )
         }),
-        ("Accès candidat (lien public)", {
+        ("Accès candidat (lien public sécurisé)", {
             "fields": (
                 "public_token",
                 "finalize_link",
             )
         }),
-        ("Validation administrative", {
+        ("Validation administrative (humaine)", {
             "fields": (
                 "validated_at",
                 "validated_by",
@@ -94,7 +110,7 @@ class EnrollmentAdmin(admin.ModelAdmin):
         ("Notes internes", {
             "fields": ("notes",)
         }),
-        ("État système (lecture seule)", {
+        ("État système (automatique)", {
             "fields": (
                 "is_active",
                 "matricule",
@@ -104,29 +120,51 @@ class EnrollmentAdmin(admin.ModelAdmin):
         }),
     )
 
-    actions = [
+    actions = (
         "validate_enrollment_admin",
         "suspend_enrollment",
         "cancel_enrollment",
-    ]
+    )
+
+    list_per_page = 25
 
     # ==================================================
     # ACTIONS ADMIN (HUMAINES UNIQUEMENT)
     # ==================================================
     @admin.action(description="Valider administrativement l'inscription")
     def validate_enrollment_admin(self, request, queryset):
+        count = 0
         for enrollment in queryset:
             enrollment.validate_admin(user=request.user)
+            count += 1
+
+        self.message_user(
+            request,
+            f"{count} inscription(s) validée(s) administrativement.",
+            messages.SUCCESS
+        )
 
     @admin.action(description="Suspendre l'inscription")
     def suspend_enrollment(self, request, queryset):
         for enrollment in queryset:
             enrollment.suspend(reason="Suspendu par l'administration")
 
+        self.message_user(
+            request,
+            "Inscription(s) suspendue(s).",
+            messages.WARNING
+        )
+
     @admin.action(description="Annuler l'inscription")
     def cancel_enrollment(self, request, queryset):
         for enrollment in queryset:
             enrollment.cancel()
+
+        self.message_user(
+            request,
+            "Inscription(s) annulée(s).",
+            messages.ERROR
+        )
 
     # ==================================================
     # MÉTHODES D’AFFICHAGE
@@ -141,9 +179,12 @@ class EnrollmentAdmin(admin.ModelAdmin):
 
     @admin.display(description="Lien de finalisation")
     def finalize_link(self, obj):
+        if not obj.public_token:
+            return "—"
+
         url = reverse(
             "inscriptions:finalize_enrollment",
-            args=[obj.public_token]
+            args=[obj.public_token],
         )
         return format_html(
             '<a href="{}" target="_blank">Ouvrir le lien</a>',

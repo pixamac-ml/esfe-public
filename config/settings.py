@@ -33,13 +33,14 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     # Django core
+"django_components",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django_components",
+
     "admissions.apps.AdmissionsConfig",
 
     "ui.apps.UiConfig",  # 👈 PAS juste "ui"

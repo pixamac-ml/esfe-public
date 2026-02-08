@@ -1,7 +1,8 @@
-from django.db import models
+from django.db import models, transaction
 from django.conf import settings
 from django.utils import timezone
 import uuid
+
 
 # ==================================================
 # ANNÉE ACADÉMIQUE
@@ -35,10 +36,15 @@ class AcademicYear(models.Model):
         return self.label
 
     def save(self, *args, **kwargs):
-        # 🔒 Une seule année académique active à la fois
-        if self.is_active:
-            AcademicYear.objects.exclude(pk=self.pk).update(is_active=False)
-        super().save(*args, **kwargs)
+        """
+        GARANTIE MÉTIER :
+        Une seule année académique peut être active à la fois.
+        """
+        with transaction.atomic():
+            if self.is_active:
+                AcademicYear.objects.exclude(pk=self.pk).update(is_active=False)
+            super().save(*args, **kwargs)
+
 
 # ==================================================
 # INSCRIPTION ADMINISTRATIVE
@@ -51,7 +57,7 @@ class Enrollment(models.Model):
     """
 
     # -------------------------
-    # STATUTS ADMINISTRATIFS
+    # STATUTS ADMINISTRATIFS (HUMAINS)
     # -------------------------
     STATUS_PENDING = "pending"
     STATUS_VALIDATED = "validated"
@@ -81,6 +87,7 @@ class Enrollment(models.Model):
         max_length=50,
         unique=True,
         blank=True,
+        null=True,
         help_text="Généré automatiquement après activation"
     )
 
@@ -90,14 +97,9 @@ class Enrollment(models.Model):
         default=STATUS_PENDING
     )
 
-    enrolled_at = models.DateTimeField(
-        default=timezone.now
-    )
+    enrolled_at = models.DateTimeField(default=timezone.now)
 
-    validated_at = models.DateTimeField(
-        null=True,
-        blank=True
-    )
+    validated_at = models.DateTimeField(null=True, blank=True)
 
     validated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -112,13 +114,14 @@ class Enrollment(models.Model):
         help_text="Observations administratives internes"
     )
 
-    # 🔐 Accès pédagogique
+    # -------------------------
+    # ÉTAT SYSTÈME (AUTOMATIQUE)
+    # -------------------------
     is_active = models.BooleanField(
         default=False,
         help_text="Autorise l'accès à la plateforme pédagogique"
     )
 
-    # 🔗 Lien public de finalisation
     public_token = models.UUIDField(
         default=uuid.uuid4,
         unique=True,
@@ -140,9 +143,8 @@ class Enrollment(models.Model):
         return f"{self.matricule or 'Pré-inscription'} – {self.application.candidate}"
 
     # ==================================================
-    # MÉTHODES MÉTIER
+    # MÉTHODES MÉTIER (HUMAINES)
     # ==================================================
-
     def validate_admin(self, user=None):
         """
         Validation administrative HUMAINE.
@@ -156,21 +158,6 @@ class Enrollment(models.Model):
         self.validated_by = user
         self.save(update_fields=["status", "validated_at", "validated_by"])
 
-    def activate(self):
-        """
-        Activation AUTOMATIQUE après paiement requis.
-        """
-        if self.is_active:
-            return
-
-        self.is_active = True
-        self.finalized_at = timezone.now()
-
-        if not self.matricule:
-            self.matricule = self.generate_matricule()
-
-        self.save(update_fields=["is_active", "finalized_at", "matricule"])
-
     def suspend(self, reason=None):
         self.status = self.STATUS_SUSPENDED
         self.is_active = False
@@ -183,14 +170,48 @@ class Enrollment(models.Model):
         self.is_active = False
         self.save(update_fields=["status", "is_active"])
 
-    def generate_matricule(self):
+    # ==================================================
+    # MÉTHODES MÉTIER (AUTOMATIQUES)
+    # ==================================================
+    def activate(self):
         """
-        Génération institutionnelle du matricule.
+        Activation AUTOMATIQUE après paiement requis.
+        """
+        if self.is_active or self.status == self.STATUS_CANCELLED:
+            return
+
+        with transaction.atomic():
+            self.is_active = True
+            self.finalized_at = timezone.now()
+
+            if not self.matricule:
+                self.matricule = self._generate_matricule_safe()
+
+            self.save(update_fields=["is_active", "finalized_at", "matricule"])
+
+    def _generate_matricule_safe(self):
+        """
+        Génération SÛRE du matricule (thread-safe).
         Exemple : ESFE-2025-000123
         """
         year = self.academic_year.label.split("-")[0]
-        count = Enrollment.objects.filter(
-            academic_year=self.academic_year
-        ).count() + 1
 
-        return f"ESFE-{year}-{str(count).zfill(6)}"
+        last_enrollment = (
+            Enrollment.objects
+            .select_for_update()
+            .filter(
+                academic_year=self.academic_year,
+                matricule__isnull=False
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
+        last_number = (
+            int(last_enrollment.matricule.split("-")[-1])
+            if last_enrollment else 0
+        )
+
+        new_number = last_number + 1
+
+        return f"ESFE-{year}-{str(new_number).zfill(6)}"

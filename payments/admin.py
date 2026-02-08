@@ -4,9 +4,9 @@ from django.utils import timezone
 from .models import FeeTemplate, Fee, Payment
 
 
-# -------------------------------------------------
-# MODÈLES DE FRAIS (CONFIGURATION OFFICIELLE)
-# -------------------------------------------------
+# ==================================================
+# RÈGLES DE FRAIS (CONFIGURATION INSTITUTIONNELLE)
+# ==================================================
 @admin.register(FeeTemplate)
 class FeeTemplateAdmin(admin.ModelAdmin):
     list_display = (
@@ -38,10 +38,14 @@ class FeeTemplateAdmin(admin.ModelAdmin):
         "is_active",
     )
 
+    readonly_fields = ()
 
-# -------------------------------------------------
-# FRAIS APPLIQUÉS À UNE INSCRIPTION
-# -------------------------------------------------
+    list_per_page = 25
+
+
+# ==================================================
+# FRAIS CONCRETS (PAR INSCRIPTION)
+# ==================================================
 @admin.register(Fee)
 class FeeAdmin(admin.ModelAdmin):
     list_display = (
@@ -50,6 +54,8 @@ class FeeAdmin(admin.ModelAdmin):
         "template",
         "amount_expected",
         "amount_override",
+        "total_paid",
+        "remaining_amount",
         "is_settled",
         "created_at",
     )
@@ -69,6 +75,8 @@ class FeeAdmin(admin.ModelAdmin):
 
     readonly_fields = (
         "created_at",
+        "total_paid",
+        "remaining_amount",
     )
 
     autocomplete_fields = (
@@ -87,14 +95,25 @@ class FeeAdmin(admin.ModelAdmin):
             "fields": (
                 "amount_expected",
                 "amount_override",
+            )
+        }),
+        ("État du frais", {
+            "fields": (
+                "total_paid",
+                "remaining_amount",
                 "is_settled",
             )
         }),
-        ("Dates", {
+        ("Traçabilité", {
             "fields": ("created_at",)
         }),
     )
 
+    list_per_page = 25
+
+    # -------------------------
+    # AFFICHAGE
+    # -------------------------
     @admin.display(description="Matricule")
     def get_matricule(self, obj):
         return obj.enrollment.matricule
@@ -104,9 +123,9 @@ class FeeAdmin(admin.ModelAdmin):
         return obj.enrollment.application.candidate
 
 
-# -------------------------------------------------
-# PAIEMENTS (CŒUR FINANCIER)
-# -------------------------------------------------
+# ==================================================
+# PAIEMENTS (OPÉRATIONNEL)
+# ==================================================
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
     list_display = (
@@ -164,26 +183,25 @@ class PaymentAdmin(admin.ModelAdmin):
         }),
     )
 
-    actions = [
-        "validate_payment",
-        "reject_payment",
-    ]
+    actions = (
+        "validate_payments",
+        "reject_payments",
+    )
+
+    list_per_page = 25
 
     # -------------------------
-    # ACTIONS ADMIN
+    # ACTIONS ADMIN (HUMAINES)
     # -------------------------
     @admin.action(description="Valider les paiements sélectionnés")
-    def validate_payment(self, request, queryset):
+    def validate_payments(self, request, queryset):
         for payment in queryset:
-            if payment.status == "pending":
-                payment.status = "validated"
-                payment.validated_by = request.user
-                payment.paid_at = timezone.now()
-                payment.save()
+            if payment.status == Payment.STATUS_PENDING:
+                payment.validate(user=request.user)
 
     @admin.action(description="Rejeter les paiements sélectionnés")
-    def reject_payment(self, request, queryset):
-        queryset.update(status="rejected")
+    def reject_payments(self, request, queryset):
+        queryset.update(status=Payment.STATUS_REJECTED)
 
     # -------------------------
     # AFFICHAGE

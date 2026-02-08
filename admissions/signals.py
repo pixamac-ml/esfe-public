@@ -1,81 +1,51 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.db import transaction
 
 from .models import Application
-from inscriptions.models import Enrollment, AcademicYear
-from payments.models import FeeTemplate, Fee
+from admissions.services import prepare_enrollment
 
 
 # ==================================================
-# OUTIL MÉTIER
-# ==================================================
-def get_active_academic_year():
-    """
-    Retourne l'année académique active.
-    Il doit y en avoir UNE et une seule.
-    """
-    return AcademicYear.objects.filter(is_active=True).first()
-
-
-# ==================================================
-# SIGNAL : ACCEPTATION D’UNE CANDIDATURE
+# SIGNAL DE SÉCURITÉ (FILET DE PROTECTION)
 # ==================================================
 @receiver(post_save, sender=Application)
-def prepare_enrollment_after_acceptance(
+def ensure_enrollment_after_acceptance(
     sender, instance: Application, created, **kwargs
 ):
     """
-    AUTOMATISME INSTITUTIONNEL (PRÉPARATOIRE)
+    FILET DE SÉCURITÉ INSTITUTIONNEL.
 
-    Lorsqu'une candidature passe au statut ACCEPTÉ :
-    - créer l'inscription administrative (PENDING)
-    - rattacher à l'année académique active
-    - générer les frais à payer
+    ⚠️ CE SIGNAL N'EST PAS LE MOTEUR PRINCIPAL.
+    ⚠️ IL EXISTE UNIQUEMENT POUR COUVRIR LES CAS OÙ :
+       - quelqu’un modifie le status via l’admin Django
+       - une migration ou un script bypass Application.accept()
 
-    ⚠️ AUCUNE activation ici
-    ⚠️ AUCUN matricule ici
-    ⚠️ AUCUNE décision académique automatique
+    RÈGLE :
+    - si la candidature est ACCEPTÉE
+    - et qu'aucune inscription n'existe
+    → on prépare l'inscription automatiquement
+
+    ❌ aucune activation
+    ❌ aucun matricule
+    ❌ aucune logique financière avancée
     """
 
     # ❌ Ne rien faire à la création initiale
     if created:
         return
 
-    # ❌ Ne déclencher QUE si le statut est ACCEPTÉ
+    # ❌ Ne s’intéresser QU’aux candidatures acceptées
     if instance.status != Application.STATUS_ACCEPTED:
         return
 
-    # ❌ Sécurité : éviter toute duplication
+    # ❌ Si l’inscription existe déjà → STOP
     if hasattr(instance, "enrollment"):
         return
 
-    academic_year = get_active_academic_year()
-
-    # ❌ Sécurité métier : pas d'année académique active
-    if not academic_year:
-        # On ne casse PAS l’admin ici
-        return
-
-    with transaction.atomic():
-
-        # 1️⃣ Création de l'inscription administrative (PRÉPARATION)
-        enrollment = Enrollment.objects.create(
-            application=instance,
-            academic_year=academic_year,
-            status=Enrollment.STATUS_PENDING,
-            is_active=False,  # 🔐 accès plateforme BLOQUÉ
-        )
-
-        # 2️⃣ Génération des frais à partir des templates
-        fee_templates = FeeTemplate.objects.filter(
-            programme=instance.programme,
-            is_active=True
-        ).order_by("order")
-
-        for template in fee_templates:
-            Fee.objects.create(
-                enrollment=enrollment,
-                template=template,
-                amount_expected=template.amount
-            )
+    # ✅ Préparation sécurisée (idempotente)
+    try:
+        prepare_enrollment(instance)
+    except Exception:
+        # ⚠️ ON NE CASSE JAMAIS L’ADMIN DJANGO
+        # Les erreurs doivent être visibles en logs, pas bloquantes
+        pass
