@@ -41,15 +41,15 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
-
-    "admissions.apps.AdmissionsConfig",
-
     "ui.apps.UiConfig",  # 👈 PAS juste "ui"
+    "admissions.apps.AdmissionsConfig",
+    "inscriptions.apps.InscriptionsConfig",
+    "payments.apps.PaymentsConfig",
     # Third-party (plus tard)
      "django_browser_reload",
     # Local apps (à venir)
-    "inscriptions",
-    "payments",
+
+
      "core",
      "blog",
      "news",

@@ -2,10 +2,8 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
 
-from .models import (
-    Candidature,
-    CandidatureDocument,
-)
+from .models import Candidature, CandidatureDocument
+
 
 # ==================================================
 # INLINE : DOCUMENTS DE LA CANDIDATURE
@@ -13,6 +11,7 @@ from .models import (
 class CandidatureDocumentInline(admin.TabularInline):
     model = CandidatureDocument
     extra = 0
+
     fields = (
         "document_type",
         "file",
@@ -20,6 +19,7 @@ class CandidatureDocumentInline(admin.TabularInline):
         "admin_note",
         "uploaded_at",
     )
+
     readonly_fields = ("uploaded_at",)
     autocomplete_fields = ("document_type",)
 
@@ -31,7 +31,7 @@ class CandidatureDocumentInline(admin.TabularInline):
 class CandidatureAdmin(admin.ModelAdmin):
 
     # ----------------------------------------------
-    # AFFICHAGE LISTE
+    # LISTE
     # ----------------------------------------------
     list_display = (
         "full_name",
@@ -62,7 +62,7 @@ class CandidatureAdmin(admin.ModelAdmin):
     list_per_page = 25
 
     # ----------------------------------------------
-    # CHAMPS EN LECTURE SEULE
+    # LECTURE SEULE
     # ----------------------------------------------
     readonly_fields = (
         "submitted_at",
@@ -71,14 +71,11 @@ class CandidatureAdmin(admin.ModelAdmin):
     )
 
     # ----------------------------------------------
-    # STRUCTURATION DU FORMULAIRE
+    # STRUCTURE FORMULAIRE
     # ----------------------------------------------
     fieldsets = (
-        ("Programme choisi", {
-            "fields": (
-                "programme",
-                "status",
-            )
+        ("Programme", {
+            "fields": ("programme", "status")
         }),
         ("Informations personnelles", {
             "fields": (
@@ -112,12 +109,10 @@ class CandidatureAdmin(admin.ModelAdmin):
         }),
     )
 
-    inlines = (
-        CandidatureDocumentInline,
-    )
+    inlines = (CandidatureDocumentInline,)
 
     # ----------------------------------------------
-    # ACTIONS ADMIN
+    # ACTIONS
     # ----------------------------------------------
     actions = (
         "mark_under_review",
@@ -128,7 +123,7 @@ class CandidatureAdmin(admin.ModelAdmin):
     )
 
     # ==================================================
-    # MÉTHODES D’AFFICHAGE
+    # AFFICHAGES
     # ==================================================
     @admin.display(description="Candidat")
     def full_name(self, obj):
@@ -137,64 +132,62 @@ class CandidatureAdmin(admin.ModelAdmin):
     @admin.display(description="Statut", ordering="status")
     def status_badge(self, obj):
         colors = {
-            "submitted": "#6c757d",          # gris
-            "under_review": "#0d6efd",       # bleu
-            "to_complete": "#ffc107",        # orange
-            "accepted": "#198754",           # vert
-            "accepted_with_reserve": "#20c997",  # vert clair
-            "rejected": "#dc3545",           # rouge
+            "submitted": "#6c757d",
+            "under_review": "#0d6efd",
+            "to_complete": "#ffc107",
+            "accepted": "#198754",
+            "accepted_with_reserve": "#20c997",
+            "rejected": "#dc3545",
         }
-
-        color = colors.get(obj.status, "#6c757d")
 
         return format_html(
             '<span style="padding:4px 8px; border-radius:4px; '
-            'background-color:{}; color:white; font-weight:600;">{}</span>',
-            color,
+            'background:{}; color:white; font-weight:600;">{}</span>',
+            colors.get(obj.status, "#6c757d"),
             obj.get_status_display()
         )
 
     # ==================================================
-    # ACTIONS MÉTIER
+    # ACTIONS MÉTIER (AVEC save() → SIGNAL OK)
     # ==================================================
-    @admin.action(description="📂 Marquer comme : En cours d’analyse")
+    @admin.action(description="📂 En cours d’analyse")
     def mark_under_review(self, request, queryset):
-        queryset.update(
-            status="under_review",
-            reviewed_at=timezone.now()
-        )
+        for candidature in queryset:
+            candidature.status = "under_review"
+            candidature.reviewed_at = timezone.now()
+            candidature.save()
 
-    @admin.action(description="✅ Accepter la candidature")
+    @admin.action(description="✅ Accepter")
     def mark_accepted(self, request, queryset):
-        queryset.update(
-            status="accepted",
-            reviewed_at=timezone.now()
-        )
+        for candidature in queryset:
+            candidature.status = "accepted"
+            candidature.reviewed_at = timezone.now()
+            candidature.save()
 
     @admin.action(description="⚠️ Accepter sous réserve")
     def mark_accepted_with_reserve(self, request, queryset):
-        queryset.update(
-            status="accepted_with_reserve",
-            reviewed_at=timezone.now()
-        )
+        for candidature in queryset:
+            candidature.status = "accepted_with_reserve"
+            candidature.reviewed_at = timezone.now()
+            candidature.save()
 
-    @admin.action(description="📝 Marquer : Dossier à compléter")
+    @admin.action(description="📝 Dossier à compléter")
     def mark_to_complete(self, request, queryset):
-        queryset.update(
-            status="to_complete",
-            reviewed_at=timezone.now()
-        )
+        for candidature in queryset:
+            candidature.status = "to_complete"
+            candidature.reviewed_at = timezone.now()
+            candidature.save()
 
-    @admin.action(description="❌ Refuser la candidature")
+    @admin.action(description="❌ Refuser")
     def mark_rejected(self, request, queryset):
-        queryset.update(
-            status="rejected",
-            reviewed_at=timezone.now()
-        )
+        for candidature in queryset:
+            candidature.status = "rejected"
+            candidature.reviewed_at = timezone.now()
+            candidature.save()
 
 
 # ==================================================
-# ADMIN : DOCUMENTS (ACCÈS DIRECT)
+# ADMIN : DOCUMENTS DE CANDIDATURE
 # ==================================================
 @admin.register(CandidatureDocument)
 class CandidatureDocumentAdmin(admin.ModelAdmin):
@@ -220,6 +213,4 @@ class CandidatureDocumentAdmin(admin.ModelAdmin):
     ordering = ("-uploaded_at",)
     list_per_page = 25
 
-    readonly_fields = (
-        "uploaded_at",
-    )
+    readonly_fields = ("uploaded_at",)

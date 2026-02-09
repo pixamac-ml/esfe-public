@@ -26,7 +26,8 @@ urlpatterns = [
     path('blog/', include('blog.urls')),
 
     path("__reload__/", include("django_browser_reload.urls")),
-    path("admissions/", include("admissions.urls")),  # ← OBLIGATOIRE
-    path("inscriptions/", include("inscriptions.urls")),  # ← OBLIGATOIRE
+    path("admissions/", include("admissions.urls")),
+    path("inscriptions/", include("inscriptions.urls")),
+    path("payments/", include("payments.urls")),
 
 ]

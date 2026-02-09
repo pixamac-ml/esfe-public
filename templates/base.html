@@ -49,15 +49,26 @@
   </main>
 
   <!-- FOOTER -->
-  <footer class="border-t text-sm text-gray-500">
-    <div class="max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row justify-between gap-4">
-      <span>© 2026 ESFE – Tous droits réservés</span>
-      <div class="flex gap-4">
-        <a href="#" class="hover:text-gray-700">Mentions légales</a>
-        <a href="#" class="hover:text-gray-700">Politique de confidentialité</a>
-      </div>
-    </div>
-  </footer>
+    <!-- FOOTER INSTITUTIONNEL -->
+    {% component "footer"
+       institution_name="ESFE"
+       description="Établissement supérieur de formation professionnelle orienté vers l’excellence académique, l’innovation pédagogique et l’employabilité."
+       navigation=[
+         {'label': 'À propos', 'url': '/a-propos/'},
+         {'label': 'Formations', 'url': '/formations/'},
+         {'label': 'Blog', 'url': '/actualites/'},
+         {'label': 'Contact', 'url': '/contact/'}
+       ]
+       contact={
+         'address': 'Bamako, Mali',
+         'phone': '+223 XX XX XX XX',
+         'email': 'contact@esfe.ml'
+       }
+       legal_links=[
+         {'label': 'Mentions légales', 'url': '/mentions-legales/'},
+         {'label': 'Politique de confidentialité', 'url': '/confidentialite/'}
+       ] %}
+    {% endcomponent %}
 
   <!-- ===================================================== -->
   <!-- ALPINE SCRIPT UNIQUE – HERO LETTER DANCE (FINAL) -->
