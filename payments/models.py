@@ -1,5 +1,6 @@
 # payments/models.py
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
 from django.db import transaction
 
@@ -110,3 +111,121 @@ class Payment(models.Model):
 
             self.inscription.amount_paid = total_paid
             self.inscription.save(update_fields=["amount_paid"])
+
+    receipt_number = models.CharField(
+        max_length=50,
+        blank=True,
+        unique=True,
+        help_text="Numéro officiel du reçu"
+    )
+
+    receipt_pdf = models.FileField(
+        upload_to="receipts/",
+        blank=True,
+        null=True
+    )
+
+    def get_receipt_url(self):
+        return reverse(
+            "payments:receipt",
+            kwargs={"pk": self.pk}
+        )
+
+
+
+# payments/models.py
+import uuid
+from django.db import models
+from django.utils import timezone
+
+from .models import Payment  # ou import local si même fichier
+
+
+class Receipt(models.Model):
+    """
+    Reçu officiel de paiement.
+    Créé UNIQUEMENT lorsqu’un paiement est validé.
+    """
+
+    payment = models.OneToOneField(
+        Payment,
+        on_delete=models.PROTECT,
+        related_name="receipt"
+    )
+
+    reference = models.CharField(
+        max_length=50,
+        unique=True,
+        editable=False
+    )
+
+    issued_at = models.DateTimeField(default=timezone.now)
+
+    issued_by = models.CharField(
+        max_length=150,
+        help_text="Agent ou système ayant généré le reçu"
+    )
+
+    class Meta:
+        ordering = ["-issued_at"]
+        indexes = [
+            models.Index(fields=["reference"]),
+            models.Index(fields=["issued_at"]),
+        ]
+
+    def __str__(self):
+        return f"Reçu {self.reference}"
+
+    # ----------------------------
+    # GÉNÉRATION RÉFÉRENCE
+    # ----------------------------
+    def save(self, *args, **kwargs):
+        if not self.reference:
+            self.reference = self.generate_reference()
+        super().save(*args, **kwargs)
+
+    def generate_reference(self):
+        """
+        Format exemple :
+        ESFE-2026-000123
+        """
+        year = timezone.now().year
+        uid = str(uuid.uuid4()).split("-")[0].upper()
+        return f"ESFE-{year}-{uid}"
+
+
+from payments.services.receipt import generate_receipt_number
+from payments.services.qrcode import generate_qr_code
+from payments.utils.pdf import render_pdf
+
+def save(self, *args, **kwargs):
+    is_new = self.pk is None
+    previous_status = None
+
+    if self.pk:
+        previous_status = Payment.objects.get(pk=self.pk).status
+
+    super().save(*args, **kwargs)
+
+    if self.status == "validated" and previous_status != "validated":
+        self.receipt_number = generate_receipt_number(self)
+
+        qr_file = generate_qr_code(
+            self.inscription.get_public_url()
+        )
+
+        pdf = render_pdf(
+            "payments/receipt.html",
+            {
+                "payment": self,
+                "qr_code_url": self.inscription.get_public_url(),
+            }
+        )
+
+        self.receipt_pdf.save(
+            f"receipt-{self.receipt_number}.pdf",
+            pdf,
+            save=False
+        )
+
+        super().save(update_fields=["receipt_number", "receipt_pdf"])

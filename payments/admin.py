@@ -1,7 +1,6 @@
 # payments/admin.py
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils.html import format_html
-from django.utils import timezone
 
 from .models import Payment
 
@@ -46,22 +45,14 @@ class PaymentAdmin(admin.ModelAdmin):
     ordering = ("-requested_at",)
     list_per_page = 25
 
-    # ----------------------------------------------
-    # CHAMPS EN LECTURE SEULE
-    # ----------------------------------------------
     readonly_fields = (
         "requested_at",
         "validated_at",
     )
 
-    # ----------------------------------------------
-    # STRUCTURE DU FORMULAIRE
-    # ----------------------------------------------
     fieldsets = (
         ("Inscription", {
-            "fields": (
-                "inscription",
-            )
+            "fields": ("inscription",)
         }),
         ("Paiement", {
             "fields": (
@@ -80,6 +71,47 @@ class PaymentAdmin(admin.ModelAdmin):
     )
 
     autocomplete_fields = ("inscription",)
+
+    # ----------------------------------------------
+    # ACTIONS ADMIN
+    # ----------------------------------------------
+    actions = ("validate_payments",)
+
+    @admin.action(description="✅ Valider le paiement sélectionné")
+    def validate_payments(self, request, queryset):
+        """
+        Action admin :
+        - valide les paiements en attente
+        - met à jour l'inscription associée
+        """
+
+        validated_count = 0
+
+        for payment in queryset:
+            if payment.status != "pending":
+                continue
+
+            payment.validate()
+            validated_count += 1
+
+            # 🔹 Activation automatique si solde réglé
+            inscription = payment.inscription
+            if inscription.balance == 0 and inscription.status != "active":
+                inscription.status = "active"
+                inscription.save(update_fields=["status"])
+
+        if validated_count:
+            self.message_user(
+                request,
+                f"{validated_count} paiement(s) validé(s) avec succès.",
+                level=messages.SUCCESS
+            )
+        else:
+            self.message_user(
+                request,
+                "Aucun paiement en attente à valider.",
+                level=messages.WARNING
+            )
 
     # ==================================================
     # MÉTHODES D’AFFICHAGE
@@ -128,3 +160,50 @@ class PaymentAdmin(admin.ModelAdmin):
             colors.get(obj.status, "#6c757d"),
             obj.get_status_display()
         )
+
+
+from django.contrib import admin
+from .models import Receipt
+
+
+@admin.register(Receipt)
+class ReceiptAdmin(admin.ModelAdmin):
+    list_display = (
+        "reference",
+        "candidate",
+        "programme",
+        "amount",
+        "issued_at",
+    )
+
+    search_fields = (
+        "reference",
+        "payment__inscription__candidature__first_name",
+        "payment__inscription__candidature__last_name",
+    )
+
+    readonly_fields = (
+        "reference",
+        "issued_at",
+        "payment",
+    )
+
+    def candidate(self, obj):
+        c = obj.payment.inscription.candidature
+        return f"{c.last_name} {c.first_name}"
+
+    def programme(self, obj):
+        return obj.payment.inscription.candidature.programme.title
+
+    def amount(self, obj):
+        return f"{obj.payment.amount} FCFA"
+
+
+@admin.display(description="Reçu")
+def receipt_link(self, obj):
+    if obj.receipt_pdf:
+        return format_html(
+            '<a href="{}" target="_blank">📄 Télécharger</a>',
+            obj.receipt_pdf.url
+        )
+    return "-"

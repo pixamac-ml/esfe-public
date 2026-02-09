@@ -122,6 +122,12 @@ Dossier d’inscription – {{ programme.title }} | ESFE
       </p>
     {% endif %}
   </div>
+    <a
+      href="{% url 'payments:receipt_pdf' receipt.reference %}"
+      class="inline-block mt-4 bg-gray-900 text-white px-6 py-3 rounded-lg"
+    >
+      Télécharger le reçu (PDF)
+    </a>
 
   <!-- ========================= -->
   <!-- MESSAGE INSTITUTIONNEL -->
