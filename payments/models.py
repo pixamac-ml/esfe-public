@@ -8,7 +8,10 @@ from inscriptions.models import Inscription
 from payments.services.receipt import generate_receipt_number
 from payments.services.qrcode import generate_qr_image
 from payments.utils.pdf import render_pdf
-from students.services import create_student_after_first_payment
+from students.services.create_student import (
+    create_student_after_first_payment
+)
+
 from students.services.email import send_student_credentials_email
 
 

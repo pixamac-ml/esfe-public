@@ -31,16 +31,9 @@ class Student(models.Model):
         unique=True
     )
 
-    # ✅ STATUT MÉTIER
     is_active = models.BooleanField(
         default=True,
         help_text="Étudiant actif dans l’établissement"
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-created_at"]
-
-    def __str__(self):
-        return f"{self.matricule} – {self.user.get_full_name()}"

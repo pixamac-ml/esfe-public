@@ -185,5 +185,6 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 DEFAULT_FROM_EMAIL = "ESFE <no-reply@esfe.mali>"
-STUDENT_LOGIN_URL = "https://esfe-mali.org/etudiant/login/"
+
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+STUDENT_LOGIN_URL = "http://127.0.0.1:8000/student/login/"
