@@ -4,13 +4,22 @@ import uuid
 import secrets
 
 from django.db import models
-from django.urls import reverse
 from django.db.models import Sum
+from django.urls import reverse
 
 from admissions.models import Candidature
 
 
 class Inscription(models.Model):
+    """
+    Inscription officielle après acceptation d’une candidature.
+
+    RÈGLES :
+    - Le montant à payer est COPIÉ et FIGÉ ici
+    - Programme.price ne doit JAMAIS être modifié
+    - Cette table est la SOURCE DE VÉRITÉ FINANCIÈRE
+    """
+
     # ==================================================
     # LIEN MÉTIER
     # ==================================================
@@ -29,7 +38,6 @@ class Inscription(models.Model):
         unique=True
     )
 
-    # 🔐 Token public sécurisé (lien étudiant)
     public_token = models.CharField(
         max_length=50,
         unique=True,
@@ -41,8 +49,8 @@ class Inscription(models.Model):
     # STATUT
     # ==================================================
     STATUS_CHOICES = (
-        ("created", "Créée"),
-        ("active", "Active"),
+        ("created", "Créée"),     # paiement en attente
+        ("active", "Active"),     # totalement payée
         ("suspended", "Suspendue"),
     )
 
@@ -53,11 +61,10 @@ class Inscription(models.Model):
     )
 
     # ==================================================
-    # FINANCES (SOURCE DE VÉRITÉ)
+    # FINANCES (FIGÉES)
     # ==================================================
     amount_due = models.PositiveIntegerField(
-        default=0,
-        help_text="Montant total à payer (FCFA)"
+        help_text="Montant total à payer pour cette inscription (FCFA)"
     )
 
     amount_paid = models.PositiveIntegerField(
@@ -74,15 +81,15 @@ class Inscription(models.Model):
         ordering = ["-created_at"]
 
     # ==================================================
-    # MÉTHODES SYSTÈME
+    # SYSTÈME
     # ==================================================
     def __str__(self):
-        return f"Inscription – {self.candidature} – {self.public_token}"
+        return f"Inscription {self.public_token}"
 
     def save(self, *args, **kwargs):
         """
-        Génère le token public UNE SEULE FOIS.
-        Jamais régénéré automatiquement.
+        - Génère le token UNE SEULE FOIS
+        - AUCUNE logique financière ici
         """
         if not self.public_token:
             self.public_token = self.generate_public_token()
@@ -90,14 +97,10 @@ class Inscription(models.Model):
 
     @staticmethod
     def generate_public_token():
-        """
-        Token non prédictible, partageable.
-        Exemple : ESFE-INS-k9F3L2Qp7T8Z
-        """
         return f"ESFE-INS-{secrets.token_urlsafe(12)}"
 
     # ==================================================
-    # URL PUBLIQUE MÉTIER
+    # URL PUBLIQUE
     # ==================================================
     def get_public_url(self):
         return reverse(
@@ -106,12 +109,12 @@ class Inscription(models.Model):
         )
 
     # ==================================================
-    # LOGIQUE FINANCIÈRE CENTRALE (VÉRITÉ ABSOLUE)
+    # LOGIQUE FINANCIÈRE
     # ==================================================
-    def recalculate_financials(self):
+    def update_financial_state(self):
         """
-        Recalcule la situation financière
-        UNIQUEMENT à partir des paiements VALIDÉS.
+        ⚠️ Appelée UNIQUEMENT par Payment après validation.
+        Cette méthode est DÉTERMINISTE.
         """
 
         total_paid = (
@@ -123,8 +126,10 @@ class Inscription(models.Model):
 
         self.amount_paid = total_paid
 
-        if self.amount_paid >= self.amount_due:
+        if total_paid >= self.amount_due:
             self.status = "active"
+        else:
+            self.status = "created"
 
         self.save(update_fields=["amount_paid", "status"])
 

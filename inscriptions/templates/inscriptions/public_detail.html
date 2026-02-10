@@ -108,7 +108,7 @@ Dossier d’inscription – {{ programme.title }} | ESFE
       </div>
     </div>
 
-    {% if not inscription.is_paid %}
+    {% if can_pay %}
       <form method="post"
             action="{% url 'payments:student_initiate' inscription.public_token %}"
             class="space-y-4">
@@ -121,6 +121,12 @@ Dossier d’inscription – {{ programme.title }} | ESFE
           Envoyer la demande de paiement
         </button>
       </form>
+
+    {% elif has_pending_payment %}
+      <p class="text-orange-600 font-medium">
+        ⏳ Une demande de paiement est déjà en attente de validation.
+      </p>
+
     {% else %}
       <p class="text-green-700 font-semibold">
         ✔ Tous les frais sont réglés.

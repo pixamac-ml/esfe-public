@@ -1,78 +1,76 @@
 # payments/views.py
-from payments.forms import StudentPaymentForm
 
-from django.shortcuts import (
-    get_object_or_404,
-    redirect,
-    render
-)
+from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
 from django.http import FileResponse, Http404
 
 from inscriptions.models import Inscription
-from .models import Payment
+from payments.models import Payment
+from payments.forms import StudentPaymentForm
 
 
 # ==================================================
-# INITIER UN PAIEMENT (étudiant)
+# DEMANDE DE PAIEMENT (ÉTUDIANT – LIEN PUBLIC)
 # ==================================================
-def initiate_payment(request, reference):
-    """
-    Création d’une demande de paiement (pending).
-    - Un seul paiement pending autorisé à la fois
-    - Montant = solde restant
-    """
+def student_initiate_payment(request, token):
+    from django.shortcuts import get_object_or_404, redirect
+    from django.contrib import messages
 
-    inscription = get_object_or_404(Inscription, reference=reference)
+    inscription = get_object_or_404(
+        Inscription,
+        public_token=token
+    )
 
-    if request.method == "POST":
+    if request.method != "POST":
+        return redirect(inscription.get_public_url())
 
-        # 🔒 Bloquer s’il existe déjà un paiement en attente
-        if Payment.objects.filter(
-            inscription=inscription,
-            status="pending"
-        ).exists():
-            messages.warning(
-                request,
-                "Une demande de paiement est déjà en cours de traitement."
-            )
-            return redirect(inscription.get_public_url())
+    form = StudentPaymentForm(request.POST)
 
-        amount = inscription.balance
-
-        if amount <= 0:
-            messages.info(
-                request,
-                "Aucun montant restant à payer."
-            )
-            return redirect(inscription.get_public_url())
-
-        Payment.objects.create(
-            inscription=inscription,
-            amount=amount,
-            method="cash",              # mode test
-            status="pending",
-            reference="INITIATED_BY_STUDENT"
-        )
-
-        messages.success(
+    if not form.is_valid():
+        messages.error(
             request,
-            "Votre demande de paiement a été enregistrée. "
-            "Veuillez finaliser auprès de l’administration."
+            "Formulaire invalide."
         )
+        return redirect(inscription.get_public_url())
+
+    amount = form.cleaned_data["amount"]
+    method = form.cleaned_data["method"]
+
+    if amount <= 0:
+        messages.error(request, "Montant invalide.")
+        return redirect(inscription.get_public_url())
+
+    if amount > inscription.balance:
+        messages.error(request, "Le montant dépasse le solde restant.")
+        return redirect(inscription.get_public_url())
+
+    if inscription.payments.filter(status="pending").exists():
+        messages.warning(
+            request,
+            "Un paiement est déjà en attente de validation."
+        )
+        return redirect(inscription.get_public_url())
+
+    Payment.objects.create(
+        inscription=inscription,
+        amount=amount,
+        method=method,
+        status="pending",
+        reference="INITIATED_BY_STUDENT"
+    )
+
+    messages.success(
+        request,
+        "Votre demande de paiement a été transmise à l’administration."
+    )
 
     return redirect(inscription.get_public_url())
 
 
 # ==================================================
-# DÉTAIL PUBLIC D’UN REÇU (basé sur Payment)
+# AFFICHAGE PUBLIC D’UN REÇU
 # ==================================================
 def receipt_public_detail(request, receipt_number):
-    """
-    Affichage public du reçu (HTML).
-    Basé sur Payment.validated + receipt_number.
-    """
-
     payment = get_object_or_404(
         Payment,
         receipt_number=receipt_number,
@@ -80,8 +78,6 @@ def receipt_public_detail(request, receipt_number):
     )
 
     inscription = payment.inscription
-    candidature = inscription.candidature
-    programme = candidature.programme
 
     return render(
         request,
@@ -89,57 +85,10 @@ def receipt_public_detail(request, receipt_number):
         {
             "payment": payment,
             "inscription": inscription,
-            "candidature": candidature,
-            "programme": programme,
+            "candidature": inscription.candidature,
+            "programme": inscription.candidature.programme,
         }
     )
-
-
-# ==================================================
-# TÉLÉCHARGEMENT PDF DU REÇU
-# ==================================================
-
-# payments/views.py
-def student_initiate_payment(request, token):
-    inscription = get_object_or_404(
-        Inscription,
-        public_token=token
-    )
-
-    form = StudentPaymentForm(request.POST)
-
-    if form.is_valid():
-        amount = form.cleaned_data["amount"]
-        method = form.cleaned_data["method"]
-
-        if amount > inscription.balance:
-            messages.error(
-                request,
-                "Le montant dépasse le solde restant."
-            )
-            return redirect(inscription.get_public_url())
-
-        if inscription.payments.filter(status="pending").exists():
-            messages.warning(
-                request,
-                "Une demande de paiement est déjà en cours."
-            )
-            return redirect(inscription.get_public_url())
-
-        Payment.objects.create(
-            inscription=inscription,
-            amount=amount,
-            method=method,
-            status="pending",
-            reference="INITIATED_BY_STUDENT"
-        )
-
-        messages.success(
-            request,
-            "Votre demande de paiement a été transmise à l’administration."
-        )
-
-    return redirect(inscription.get_public_url())
 
 
 # ==================================================
@@ -153,7 +102,7 @@ def receipt_pdf(request, receipt_number):
     )
 
     if not payment.receipt_pdf:
-        raise Http404("Reçu non disponible.")
+        raise Http404("Le reçu PDF n’est pas disponible.")
 
     return FileResponse(
         payment.receipt_pdf.open("rb"),

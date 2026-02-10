@@ -1,9 +1,8 @@
-
-from django.utils import timezone
-from formations.models import Programme
-
 from django.db import models
-from formations.models import RequiredDocument
+from django.utils import timezone
+
+from formations.models import Programme, RequiredDocument
+
 
 class Candidature(models.Model):
 
@@ -14,6 +13,14 @@ class Candidature(models.Model):
         Programme,
         on_delete=models.PROTECT,
         related_name="candidatures"
+    )
+
+    # ----------------------------------
+    # ANNÉE D’ENTRÉE (CLÉ MÉTIER)
+    # ----------------------------------
+    entry_year = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Année d’entrée dans le programme (1 = première année)"
     )
 
     # ----------------------------------
@@ -85,7 +92,6 @@ class Candidature(models.Model):
         null=True,
         blank=True
     )
-
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -104,9 +110,6 @@ class Candidature(models.Model):
     def mark_reviewed(self):
         self.reviewed_at = timezone.now()
         self.save(update_fields=["reviewed_at"])
-
-
-
 
 
 class CandidatureDocument(models.Model):

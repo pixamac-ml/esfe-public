@@ -2,7 +2,6 @@
 
 from django.contrib import admin, messages
 from django.utils.html import format_html
-from django.utils import timezone
 
 from .models import Payment
 
@@ -11,8 +10,11 @@ from .models import Payment
 class PaymentAdmin(admin.ModelAdmin):
     """
     Administration des paiements.
-    Option B : validation MANUELLE par l’administration.
-    Le reçu est généré automatiquement lors du passage à VALIDATED.
+
+    RÈGLE D’OR :
+    - L’admin NE CONTIENT AUCUNE logique métier
+    - Il déclenche un changement de statut
+    - Le modèle Payment décide de tout le reste
     """
 
     # ==================================================
@@ -99,13 +101,9 @@ class PaymentAdmin(admin.ModelAdmin):
     @admin.action(description="✅ Valider les paiements sélectionnés")
     def validate_payments(self, request, queryset):
         """
-        Action admin :
+        Action admin minimale :
         - passe le paiement à VALIDATED
-        - déclenche automatiquement :
-            - génération du reçu
-            - QR code
-            - PDF
-        - active l’inscription si le solde est réglé
+        - TOUT le reste est géré par Payment.save()
         """
 
         validated_count = 0
@@ -116,12 +114,6 @@ class PaymentAdmin(admin.ModelAdmin):
 
             payment.status = "validated"
             payment.save(update_fields=["status"])
-
-            inscription = payment.inscription
-            if inscription.balance == 0 and inscription.status != "active":
-                inscription.status = "active"
-                inscription.save(update_fields=["status"])
-
             validated_count += 1
 
         if validated_count:

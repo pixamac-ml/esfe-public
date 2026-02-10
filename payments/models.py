@@ -8,10 +8,10 @@ from inscriptions.models import Inscription
 from payments.services.receipt import generate_receipt_number
 from payments.services.qrcode import generate_qr_image
 from payments.utils.pdf import render_pdf
+
 from students.services.create_student import (
     create_student_after_first_payment
 )
-
 from students.services.email import send_student_credentials_email
 
 
@@ -19,12 +19,12 @@ class Payment(models.Model):
     """
     Paiement lié à une inscription.
 
-    RÈGLES MÉTIER :
+    RÈGLES MÉTIER (STRICTES) :
     - Un paiement VALIDÉ :
-        • met à jour la situation financière de l’inscription
+        • met à jour l’inscription (montant payé / statut)
         • génère UN SEUL reçu PDF
-        • crée le compte étudiant lors du PREMIER paiement validé
-    - AUCUN signal
+        • crée le compte étudiant au PREMIER paiement validé
+    - AUCUN signal métier
     - TOUT est centralisé ici
     """
 
@@ -88,8 +88,8 @@ class Payment(models.Model):
 
     receipt_pdf = models.FileField(
         upload_to="payments/receipts/",
-        blank=True,
-        null=True
+        null=True,
+        blank=True
     )
 
     # ==================================================
@@ -110,16 +110,16 @@ class Payment(models.Model):
         return f"{self.amount} FCFA – {self.inscription.reference}"
 
     # ==================================================
-    # LOGIQUE MÉTIER CENTRALE (SOURCE DE VÉRITÉ)
+    # PIPELINE MÉTIER CENTRAL
     # ==================================================
     def save(self, *args, **kwargs):
         """
-        Pipeline métier STRICT :
+        PIPELINE STRICT :
 
         1️⃣ Détection du passage → VALIDATED
-        2️⃣ Synchronisation financière de l’inscription
-        3️⃣ Création automatique de l’étudiant (1 seule fois)
-        4️⃣ Génération du reçu PDF (1 seule fois)
+        2️⃣ Mise à jour financière de l’inscription
+        3️⃣ Génération du reçu (UNE FOIS)
+        4️⃣ Création étudiant + email (APRÈS COMMIT)
         """
 
         previous_status = None
@@ -137,53 +137,44 @@ class Payment(models.Model):
             if not just_validated:
                 return
 
-            # --------------------------------------------------
-            # 1️⃣ SYNCHRO FINANCIÈRE (SOURCE DE VÉRITÉ)
-            # --------------------------------------------------
-            self.inscription.recalculate_financials()
+            # ---------------------------------------------
+            # 1️⃣ SYNCHRONISATION FINANCIÈRE
+            # ---------------------------------------------
+            self.inscription.update_financial_state()
 
-            # --------------------------------------------------
-            # 2️⃣ CRÉATION DU COMPTE ÉTUDIANT (UNE SEULE FOIS)
-            # --------------------------------------------------
-            create_student_after_first_payment(self.inscription)
+            # ---------------------------------------------
+            # 2️⃣ GÉNÉRATION DU REÇU (UNE SEULE FOIS)
+            # ---------------------------------------------
+            if not self.receipt_number:
+                self.receipt_number = generate_receipt_number(self)
 
-            # --------------------------------------------------
-            # 3️⃣ GÉNÉRATION DU REÇU (UNE SEULE FOIS)
-            # --------------------------------------------------
-            if self.receipt_number:
-                return
+                qr_image = generate_qr_image(
+                    self.inscription.get_public_url()
+                )
 
-            self.receipt_number = generate_receipt_number(self)
+                pdf_bytes = render_pdf(
+                    payment=self,
+                    inscription=self.inscription,
+                    qr_image=qr_image
+                )
 
-            qr_image = generate_qr_image(
-                self.inscription.get_public_url()
-            )
+                self.receipt_pdf.save(
+                    f"receipt-{self.receipt_number}.pdf",
+                    ContentFile(pdf_bytes),
+                    save=False
+                )
 
-            pdf_bytes = render_pdf(
-                payment=self,
-                inscription=self.inscription,
-                qr_image=qr_image
-            )
+                super().save(
+                    update_fields=["receipt_number", "receipt_pdf"]
+                )
 
-            self.receipt_pdf.save(
-                f"receipt-{self.receipt_number}.pdf",
-                ContentFile(pdf_bytes),
-                save=False
-            )
-
-            super().save(
-                update_fields=["receipt_number", "receipt_pdf"]
-            )
-
-        # 🔥 CRÉATION ÉTUDIANT (APRÈS 1er paiement)
+        # ---------------------------------------------
+        # 3️⃣ CRÉATION ÉTUDIANT (APRÈS COMMIT)
+        # ---------------------------------------------
         result = create_student_after_first_payment(self.inscription)
 
         if result:
-            student = result["student"]
-            raw_password = result["password"]
-
-            # 📧 ENVOI EMAIL AUTOMATIQUE
             send_student_credentials_email(
-                student=student,
-                raw_password=raw_password
+                student=result["student"],
+                raw_password=result["password"]
             )

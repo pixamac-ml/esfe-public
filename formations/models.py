@@ -41,7 +41,7 @@ class Diploma(models.Model):
 
 
 # ==================================================
-# FILIÈRE (DOMAINE)
+# FILIÈRE
 # ==================================================
 class Filiere(models.Model):
     name = models.CharField(max_length=200, unique=True)
@@ -56,7 +56,7 @@ class Filiere(models.Model):
 
 
 # ==================================================
-# PROGRAMME (SPÉCIALITÉ)
+# PROGRAMME
 # ==================================================
 class Programme(models.Model):
     title = models.CharField(max_length=255)
@@ -117,6 +117,25 @@ class Programme(models.Model):
 
         super().save(*args, **kwargs)
 
+    # ==================================================
+    # LOGIQUE FINANCIÈRE (CLÉ)
+    # ==================================================
+    def get_inscription_amount_for_year(self, year_number):
+        """
+        Montant total à payer pour une année donnée :
+        somme de toutes les tranches (Fee) de cette année.
+        """
+        programme_year = self.years.filter(
+            year_number=year_number
+        ).first()
+
+        if not programme_year:
+            return 0
+
+        return sum(
+            fee.amount for fee in programme_year.fees.all()
+        )
+
 
 # ==================================================
 # ANNÉES DU PROGRAMME
@@ -138,7 +157,7 @@ class ProgrammeYear(models.Model):
 
 
 # ==================================================
-# FRAIS PAR ANNÉE
+# FRAIS PAR ANNÉE (TRANCHES)
 # ==================================================
 class Fee(models.Model):
     programme_year = models.ForeignKey(
