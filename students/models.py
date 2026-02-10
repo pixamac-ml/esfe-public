@@ -1,18 +1,22 @@
+# students/models.py
+
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 
 from inscriptions.models import Inscription
+
+User = get_user_model()
 
 
 class Student(models.Model):
     """
-    Étudiant officiellement inscrit à l’ESFE.
-    Créé après validation du premier paiement.
+    Étudiant officiel de l’établissement.
+    Créé automatiquement après le premier paiement validé.
     """
 
     user = models.OneToOneField(
         User,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="student_profile"
     )
 
@@ -27,15 +31,16 @@ class Student(models.Model):
         unique=True
     )
 
+    # ✅ STATUT MÉTIER
     is_active = models.BooleanField(
         default=True,
-        help_text="Accès à la plateforme pédagogique"
+        help_text="Étudiant actif dans l’établissement"
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["created_at"]
+        ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.matricule}"
+        return f"{self.matricule} – {self.user.get_full_name()}"

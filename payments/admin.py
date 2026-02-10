@@ -1,6 +1,8 @@
 # payments/admin.py
+
 from django.contrib import admin, messages
 from django.utils.html import format_html
+from django.utils import timezone
 
 from .models import Payment
 
@@ -9,12 +11,13 @@ from .models import Payment
 class PaymentAdmin(admin.ModelAdmin):
     """
     Administration des paiements.
-    Validation MANUELLE par l’administration (Option B).
+    Option B : validation MANUELLE par l’administration.
+    Le reçu est généré automatiquement lors du passage à VALIDATED.
     """
 
-    # ----------------------------------------------
+    # ==================================================
     # LISTE
-    # ----------------------------------------------
+    # ==================================================
     list_display = (
         "id",
         "inscription_reference",
@@ -23,36 +26,46 @@ class PaymentAdmin(admin.ModelAdmin):
         "amount_display",
         "method_badge",
         "status_badge",
-        "requested_at",
-        "validated_at",
+        "paid_at",
+        "receipt_link",
     )
 
     list_filter = (
         "method",
         "status",
-        "requested_at",
-        "validated_at",
+        "paid_at",
     )
 
     search_fields = (
         "reference",
+        "receipt_number",
         "inscription__reference",
         "inscription__candidature__first_name",
         "inscription__candidature__last_name",
         "inscription__candidature__programme__title",
     )
 
-    ordering = ("-requested_at",)
+    ordering = ("-paid_at",)
     list_per_page = 25
 
+    # ==================================================
+    # LECTURE SEULE
+    # ==================================================
     readonly_fields = (
-        "requested_at",
-        "validated_at",
+        "paid_at",
+        "created_at",
+        "receipt_number",
+        "receipt_pdf",
     )
 
+    # ==================================================
+    # FORMULAIRE ADMIN
+    # ==================================================
     fieldsets = (
         ("Inscription", {
-            "fields": ("inscription",)
+            "fields": (
+                "inscription",
+            )
         }),
         ("Paiement", {
             "fields": (
@@ -62,27 +75,37 @@ class PaymentAdmin(admin.ModelAdmin):
                 "reference",
             )
         }),
-        ("Traçabilité", {
+        ("Reçu", {
             "fields": (
-                "requested_at",
-                "validated_at",
+                "receipt_number",
+                "receipt_pdf",
+            )
+        }),
+        ("Système", {
+            "fields": (
+                "paid_at",
+                "created_at",
             )
         }),
     )
 
     autocomplete_fields = ("inscription",)
 
-    # ----------------------------------------------
+    # ==================================================
     # ACTIONS ADMIN
-    # ----------------------------------------------
+    # ==================================================
     actions = ("validate_payments",)
 
-    @admin.action(description="✅ Valider le paiement sélectionné")
+    @admin.action(description="✅ Valider les paiements sélectionnés")
     def validate_payments(self, request, queryset):
         """
         Action admin :
-        - valide les paiements en attente
-        - met à jour l'inscription associée
+        - passe le paiement à VALIDATED
+        - déclenche automatiquement :
+            - génération du reçu
+            - QR code
+            - PDF
+        - active l’inscription si le solde est réglé
         """
 
         validated_count = 0
@@ -91,14 +114,15 @@ class PaymentAdmin(admin.ModelAdmin):
             if payment.status != "pending":
                 continue
 
-            payment.validate()
-            validated_count += 1
+            payment.status = "validated"
+            payment.save(update_fields=["status"])
 
-            # 🔹 Activation automatique si solde réglé
             inscription = payment.inscription
             if inscription.balance == 0 and inscription.status != "active":
                 inscription.status = "active"
                 inscription.save(update_fields=["status"])
+
+            validated_count += 1
 
         if validated_count:
             self.message_user(
@@ -161,49 +185,12 @@ class PaymentAdmin(admin.ModelAdmin):
             obj.get_status_display()
         )
 
-
-from django.contrib import admin
-from .models import Receipt
-
-
-@admin.register(Receipt)
-class ReceiptAdmin(admin.ModelAdmin):
-    list_display = (
-        "reference",
-        "candidate",
-        "programme",
-        "amount",
-        "issued_at",
-    )
-
-    search_fields = (
-        "reference",
-        "payment__inscription__candidature__first_name",
-        "payment__inscription__candidature__last_name",
-    )
-
-    readonly_fields = (
-        "reference",
-        "issued_at",
-        "payment",
-    )
-
-    def candidate(self, obj):
-        c = obj.payment.inscription.candidature
-        return f"{c.last_name} {c.first_name}"
-
-    def programme(self, obj):
-        return obj.payment.inscription.candidature.programme.title
-
-    def amount(self, obj):
-        return f"{obj.payment.amount} FCFA"
-
-
-@admin.display(description="Reçu")
-def receipt_link(self, obj):
-    if obj.receipt_pdf:
-        return format_html(
-            '<a href="{}" target="_blank">📄 Télécharger</a>',
-            obj.receipt_pdf.url
-        )
-    return "-"
+    @admin.display(description="📄 Reçu")
+    def receipt_link(self, obj):
+        if obj.receipt_pdf:
+            return format_html(
+                '<a href="{}" target="_blank" style="font-weight:600;">'
+                'Télécharger</a>',
+                obj.receipt_pdf.url
+            )
+        return "-"

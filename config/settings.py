@@ -33,7 +33,7 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     # Django core
-"django_components",
+    "django_components",  #
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -183,3 +183,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 # --------------------------------------------------
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+DEFAULT_FROM_EMAIL = "ESFE <no-reply@esfe.mali>"
+STUDENT_LOGIN_URL = "https://esfe-mali.org/etudiant/login/"
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

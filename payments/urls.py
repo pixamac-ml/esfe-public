@@ -1,24 +1,44 @@
-from django.urls import path
-from .views import initiate_payment, receipt_public_detail, receipt_pdf
+# payments/urls.py
 
-app_name = "payments"   # ← OBLIGATOIRE
+from django.urls import path
+from . import views
+from .views import student_initiate_payment
+from .views import student_initiate_payment, receipt_pdf
+app_name = "payments"
 
 urlpatterns = [
     path(
         "initiate/<uuid:reference>/",
-        initiate_payment,
+        views.initiate_payment,
+        name="initiate"
+    ),
+    path(
+        "initier/<str:token>/",
+        views.student_initiate_payment,
+        name="student_initiate",  # 👈 C’EST CE NOM QUI COMPTE
+    ),
+
+    path(
+        "receipt/<str:receipt_number>/pdf/",
+        views.receipt_pdf,
+        name="receipt_pdf",
+    ),
+    path(
+        "initier/<str:token>/",
+        student_initiate_payment,
         name="initiate"
     ),
 
     path(
-        "recu/<str:reference>/",
-        receipt_public_detail,
-        name="receipt_detail"
+        "initier/<str:token>/",
+        student_initiate_payment,
+        name="initiate"
     ),
-
     path(
-        "recu/<str:reference>/pdf/",
+        "receipt/<str:receipt_number>/pdf/",
         receipt_pdf,
-        name="receipt_pdf",
+        name="receipt_pdf"
     ),
 ]
+
+

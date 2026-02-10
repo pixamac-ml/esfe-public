@@ -1,0 +1,19 @@
+Bonjour {{ user.first_name }},
+
+Votre inscription à l’ESFE a été confirmée avec succès.
+
+Vos identifiants de connexion :
+Email : {{ user.email }}
+Mot de passe : {{ password }}
+
+Accès à votre dossier d’inscription :
+{{ public_link }}
+
+Accès à votre espace étudiant :
+{{ login_url }}
+
+⚠️ Pour votre sécurité, veuillez changer votre mot de passe
+dès votre première connexion.
+
+Cordialement,
+Administration ESFE

@@ -1,0 +1,32 @@
+<h2>🎓 Bienvenue à l’ESFE</h2>
+
+<p>Bonjour <strong>{{ user.first_name }}</strong>,</p>
+
+<p>
+Votre inscription a été confirmée après réception de votre paiement.
+Votre compte étudiant est maintenant actif.
+</p>
+
+<h3>🔐 Vos accès</h3>
+<ul>
+  <li><strong>Email :</strong> {{ user.email }}</li>
+  <li><strong>Mot de passe :</strong> {{ password }}</li>
+</ul>
+
+<p>
+<a href="{{ login_url }}">👉 Accéder à l’espace étudiant</a>
+</p>
+
+<h3>📁 Suivi de votre inscription</h3>
+<p>
+<a href="{{ public_link }}">👉 Voir mon dossier d’inscription</a>
+</p>
+
+<p style="color:#b00;">
+⚠️ Merci de changer votre mot de passe dès la première connexion.
+</p>
+
+<p>
+— <br>
+<strong>Administration ESFE</strong>
+</p>

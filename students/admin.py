@@ -1,3 +1,5 @@
+# students/admin.py
+
 from django.contrib import admin
 from .models import Student
 
@@ -7,26 +9,30 @@ class StudentAdmin(admin.ModelAdmin):
     list_display = (
         "matricule",
         "full_name",
-        "programme",
+        "email",
+        "is_active",
+        "created_at",
+    )
+
+    list_filter = (
         "is_active",
         "created_at",
     )
 
     search_fields = (
         "matricule",
-        "user__username",
-        "inscription__candidature__first_name",
-        "inscription__candidature__last_name",
+        "user__first_name",
+        "user__last_name",
+        "user__email",
     )
 
-    list_filter = (
-        "is_active",
-        "inscription__candidature__programme",
+    readonly_fields = (
+        "created_at",
     )
 
     def full_name(self, obj):
-        c = obj.inscription.candidature
-        return f"{c.last_name} {c.first_name}"
+        return obj.user.get_full_name()
+    full_name.short_description = "Nom complet"
 
-    def programme(self, obj):
-        return obj.inscription.candidature.programme.title
+    def email(self, obj):
+        return obj.user.email
