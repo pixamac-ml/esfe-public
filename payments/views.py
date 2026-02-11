@@ -13,8 +13,6 @@ from payments.forms import StudentPaymentForm
 # DEMANDE DE PAIEMENT (ÉTUDIANT – LIEN PUBLIC)
 # ==================================================
 def student_initiate_payment(request, token):
-    from django.shortcuts import get_object_or_404, redirect
-    from django.contrib import messages
 
     inscription = get_object_or_404(
         Inscription,
@@ -24,22 +22,35 @@ def student_initiate_payment(request, token):
     if request.method != "POST":
         return redirect(inscription.get_public_url())
 
-    form = StudentPaymentForm(request.POST)
+    form = StudentPaymentForm(
+        request.POST,
+        inscription=inscription
+    )
 
     if not form.is_valid():
-        messages.error(
+        # 🔥 On renvoie la page avec le form et ses erreurs
+        payments = inscription.payments.order_by("-paid_at")
+
+        context = {
+            "inscription": inscription,
+            "candidature": inscription.candidature,
+            "programme": inscription.candidature.programme,
+            "payments": payments,
+            "payment_form": form,
+            "can_pay": True,
+            "has_pending_payment": False,
+        }
+
+        return render(
             request,
-            "Formulaire invalide."
+            "inscriptions/public_detail.html",
+            context
         )
-        return redirect(inscription.get_public_url())
 
     amount = form.cleaned_data["amount"]
     method = form.cleaned_data["method"]
 
-    if amount <= 0:
-        messages.error(request, "Montant invalide.")
-        return redirect(inscription.get_public_url())
-
+    # Sécurité supplémentaire
     if amount > inscription.balance:
         messages.error(request, "Le montant dépasse le solde restant.")
         return redirect(inscription.get_public_url())
@@ -51,12 +62,16 @@ def student_initiate_payment(request, token):
         )
         return redirect(inscription.get_public_url())
 
+    # =================================================
+    # Création Payment
+    # =================================================
     Payment.objects.create(
         inscription=inscription,
         amount=amount,
         method=method,
         status="pending",
-        reference="INITIATED_BY_STUDENT"
+        reference="INITIATED_BY_STUDENT",
+        agent=form.agent if method == "cash" else None
     )
 
     messages.success(

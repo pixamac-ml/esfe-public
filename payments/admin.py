@@ -186,3 +186,33 @@ class PaymentAdmin(admin.ModelAdmin):
                 obj.receipt_pdf.url
             )
         return "-"
+
+
+from django.contrib import admin
+from .models import PaymentAgent, CashPaymentSession
+
+
+@admin.register(PaymentAgent)
+class PaymentAgentAdmin(admin.ModelAdmin):
+    list_display = ("user", "agent_code", "is_active", "created_at")
+    search_fields = ("user__first_name", "user__last_name")
+    list_filter = ("is_active",)
+
+
+@admin.register(CashPaymentSession)
+class CashPaymentSessionAdmin(admin.ModelAdmin):
+    list_display = (
+        "inscription",
+        "agent",
+        "verification_code",
+        "is_used",
+        "expires_at",
+        "created_at",
+    )
+    search_fields = (
+        "inscription__reference",
+        "agent__user__first_name",
+        "agent__user__last_name",
+    )
+    list_filter = ("is_used",)
+

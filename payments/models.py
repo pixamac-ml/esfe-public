@@ -15,6 +15,85 @@ from students.services.create_student import (
 from students.services.email import send_student_credentials_email
 
 
+
+from django.contrib.auth import get_user_model
+import secrets
+
+User = get_user_model()
+
+
+class PaymentAgent(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        limit_choices_to={"is_staff": True},
+        related_name="payment_agent_profile"
+    )
+
+    agent_code = models.CharField(
+        max_length=8,
+        unique=True,
+        editable=False
+    )
+
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.agent_code:
+            self.agent_code = secrets.token_hex(3).upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.user.get_full_name()} ({self.agent_code})"
+
+
+
+from django.utils import timezone
+from datetime import timedelta
+import random
+
+
+class CashPaymentSession(models.Model):
+
+    inscription = models.ForeignKey(
+        Inscription,
+        on_delete=models.CASCADE,
+        related_name="cash_sessions"
+    )
+
+    agent = models.ForeignKey(
+        PaymentAgent,
+        on_delete=models.PROTECT,
+        related_name="cash_sessions"
+    )
+
+    verification_code = models.CharField(max_length=6)
+
+    expires_at = models.DateTimeField()
+
+    is_used = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def generate_code(self):
+        self.verification_code = str(random.randint(100000, 999999))
+        self.expires_at = timezone.now() + timedelta(minutes=5)
+        self.save()
+
+    def is_valid(self, code):
+        return (
+            not self.is_used
+            and self.verification_code == code
+            and timezone.now() <= self.expires_at
+        )
+
+    def __str__(self):
+        return f"Session cash {self.inscription.reference}"
+
+
+
 class Payment(models.Model):
     """
     Paiement lié à une inscription.
@@ -46,9 +125,20 @@ class Payment(models.Model):
     # ==================================================
     # LIENS
     # ==================================================
+    # ==================================================
+    # LIENS
+    # ==================================================
     inscription = models.ForeignKey(
         Inscription,
         on_delete=models.CASCADE,
+        related_name="payments"
+    )
+
+    agent = models.ForeignKey(
+        PaymentAgent,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         related_name="payments"
     )
 
@@ -113,14 +203,6 @@ class Payment(models.Model):
     # PIPELINE MÉTIER CENTRAL
     # ==================================================
     def save(self, *args, **kwargs):
-        """
-        PIPELINE STRICT :
-
-        1️⃣ Détection du passage → VALIDATED
-        2️⃣ Mise à jour financière de l’inscription
-        3️⃣ Génération du reçu (UNE FOIS)
-        4️⃣ Création étudiant + email (APRÈS COMMIT)
-        """
 
         previous_status = None
         if self.pk:
@@ -130,21 +212,17 @@ class Payment(models.Model):
             super().save(*args, **kwargs)
 
             just_validated = (
-                self.status == "validated"
-                and previous_status != "validated"
+                    self.status == "validated"
+                    and previous_status != "validated"
             )
 
             if not just_validated:
                 return
 
-            # ---------------------------------------------
-            # 1️⃣ SYNCHRONISATION FINANCIÈRE
-            # ---------------------------------------------
+            # 1️⃣ Synchronisation financière
             self.inscription.update_financial_state()
 
-            # ---------------------------------------------
-            # 2️⃣ GÉNÉRATION DU REÇU (UNE SEULE FOIS)
-            # ---------------------------------------------
+            # 2️⃣ Génération du reçu (UNE SEULE FOIS)
             if not self.receipt_number:
                 self.receipt_number = generate_receipt_number(self)
 
@@ -168,9 +246,11 @@ class Payment(models.Model):
                     update_fields=["receipt_number", "receipt_pdf"]
                 )
 
-        # ---------------------------------------------
-        # 3️⃣ CRÉATION ÉTUDIANT (APRÈS COMMIT)
-        # ---------------------------------------------
+        # ==========================================
+        # 3️⃣ APRÈS COMMIT
+        # ==========================================
+
+        # Création étudiant (1er paiement uniquement)
         result = create_student_after_first_payment(self.inscription)
 
         if result:
@@ -178,3 +258,7 @@ class Payment(models.Model):
                 student=result["student"],
                 raw_password=result["password"]
             )
+        else:
+            # Paiement suivant → simple confirmation
+            from students.services.email import send_payment_confirmation_email
+            send_payment_confirmation_email(payment=self)

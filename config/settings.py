@@ -2,8 +2,15 @@
 Django settings for config project.
 Configuration DEV stable ESFE
 """
-
+import os
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / ".env")
 
 # ==================================================
 # BASE
@@ -26,6 +33,7 @@ ALLOWED_HOSTS = []
 # ==================================================
 INSTALLED_APPS = [
     # Django core
+    "django_components",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -35,7 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.humanize",
 
     # ⚠️ OBLIGATOIRE AVANT TOUT COMPONENT
-    "django_components",
+
 
     # Dev tools
     "django_browser_reload",
@@ -175,6 +183,19 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # ==================================================
 # EMAIL (DEV)
 # ==================================================
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "ESFE <no-reply@esfe-mali.org>"
+
+
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 STUDENT_LOGIN_URL = "http://127.0.0.1:8000/student/login/"
+
+

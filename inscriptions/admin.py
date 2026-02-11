@@ -3,6 +3,7 @@
 from django.contrib import admin, messages
 from django.db import transaction
 from django.utils.html import format_html
+import secrets
 
 from .models import Inscription
 from inscriptions.services import create_inscription_from_candidature
@@ -14,24 +15,16 @@ from admissions.models import Candidature
 # ==================================================
 @admin.action(description="✅ Accepter la candidature et créer l’inscription")
 def accepter_candidature(modeladmin, request, queryset):
-    """
-    Action institutionnelle :
-    - accepte officiellement une candidature
-    - crée UNE inscription (si absente)
-    - copie le prix du programme dans amount_due
-    """
 
     created_count = 0
     skipped_count = 0
 
     for candidature in queryset:
 
-        # 🔒 Déjà acceptée
         if candidature.status in ("accepted", "accepted_with_reserve"):
             skipped_count += 1
             continue
 
-        # 🔒 Inscription déjà existante
         if hasattr(candidature, "inscription"):
             skipped_count += 1
             continue
@@ -67,18 +60,27 @@ def accepter_candidature(modeladmin, request, queryset):
 
 
 # ==================================================
+# ACTION ADMIN : RÉGÉNÉRER CODE D’ACCÈS
+# ==================================================
+@admin.action(description="🔁 Régénérer le code d'accès")
+def regenerate_access_code(modeladmin, request, queryset):
+
+    for inscription in queryset:
+        inscription.access_code = secrets.token_urlsafe(6)
+        inscription.save(update_fields=["access_code"])
+
+    modeladmin.message_user(
+        request,
+        "Code(s) d’accès régénéré(s) avec succès.",
+        level=messages.SUCCESS
+    )
+
+
+# ==================================================
 # ADMIN INSCRIPTION
 # ==================================================
 @admin.register(Inscription)
 class InscriptionAdmin(admin.ModelAdmin):
-    """
-    Administration des inscriptions.
-
-    RÈGLES :
-    - amount_due est modifiable (cas particuliers)
-    - amount_paid est STRICTEMENT en lecture seule
-    - AUCUNE logique financière ici
-    """
 
     # ==================================================
     # LISTE
@@ -92,6 +94,7 @@ class InscriptionAdmin(admin.ModelAdmin):
         "amount_due_display",
         "amount_paid_display",
         "balance_display",
+        "access_code_display",
         "created_at",
         "public_link",
     )
@@ -102,6 +105,8 @@ class InscriptionAdmin(admin.ModelAdmin):
 
     search_fields = (
         "reference",
+        "public_token",
+        "access_code",
         "candidature__first_name",
         "candidature__last_name",
         "candidature__programme__title",
@@ -113,47 +118,66 @@ class InscriptionAdmin(admin.ModelAdmin):
     readonly_fields = (
         "reference",
         "public_token",
+        "access_code",
         "amount_paid",
         "created_at",
     )
 
     fieldsets = (
         ("Candidature", {
-            "fields": (
-                "candidature",
-            )
+            "fields": ("candidature",)
         }),
         ("Statut", {
-            "fields": (
-                "status",
-            )
+            "fields": ("status",)
         }),
         ("Finances (copie figée)", {
             "description": (
                 "Le montant à payer est copié depuis le programme "
                 "au moment de l’acceptation. "
-                "Il peut être ajusté ici en cas particulier "
-                "(bourse, remise, correction)."
+                "Il peut être ajusté ici en cas particulier."
             ),
             "fields": (
                 "amount_due",
                 "amount_paid",
             )
         }),
+        ("Sécurité d'accès", {
+            "description": "Code requis pour accéder au dossier étudiant.",
+            "fields": (
+                "public_token",
+                "access_code",
+            )
+        }),
         ("Système", {
             "fields": (
                 "reference",
-                "public_token",
                 "created_at",
             )
         }),
     )
 
-    actions = [accepter_candidature]
 
     # ==================================================
     # MÉTHODES D’AFFICHAGE
     # ==================================================
+
+    @admin.action(description="🔐 Générer code d'accès si absent")
+    def generate_missing_access_codes(modeladmin, request, queryset):
+
+        generated = 0
+
+        for inscription in queryset:
+            if not inscription.access_code:
+                inscription.access_code = secrets.token_urlsafe(6)
+                inscription.save(update_fields=["access_code"])
+                generated += 1
+
+        modeladmin.message_user(
+            request,
+            f"{generated} code(s) généré(s).",
+            level=messages.SUCCESS
+        )
+
     @admin.display(description="Candidat")
     def candidate_name(self, obj):
         c = obj.candidature
@@ -192,6 +216,13 @@ class InscriptionAdmin(admin.ModelAdmin):
             obj.balance
         )
 
+    @admin.display(description="Code d'accès")
+    def access_code_display(self, obj):
+        return format_html(
+            '<span style="font-weight:600; color:#0d6efd;">{}</span>',
+            obj.access_code
+        )
+
     @admin.display(description="Lien public étudiant")
     def public_link(self, obj):
         return format_html(
@@ -199,3 +230,10 @@ class InscriptionAdmin(admin.ModelAdmin):
             '🔗 Ouvrir le dossier</a>',
             obj.get_public_url()
         )
+
+    actions = [
+        accepter_candidature,
+        regenerate_access_code,
+        generate_missing_access_codes,
+    ]
+

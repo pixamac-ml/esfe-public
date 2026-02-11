@@ -16,8 +16,8 @@ class Inscription(models.Model):
 
     RÈGLES :
     - Le montant à payer est COPIÉ et FIGÉ ici
-    - Programme.price ne doit JAMAIS être modifié
     - Cette table est la SOURCE DE VÉRITÉ FINANCIÈRE
+    - Accès sécurisé par code privé
     """
 
     # ==================================================
@@ -45,12 +45,18 @@ class Inscription(models.Model):
         db_index=True
     )
 
+    access_code = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Code d’accès privé au dossier"
+    )
+
     # ==================================================
     # STATUT
     # ==================================================
     STATUS_CHOICES = (
-        ("created", "Créée"),     # paiement en attente
-        ("active", "Active"),     # totalement payée
+        ("created", "Créée"),
+        ("active", "Active"),
         ("suspended", "Suspendue"),
     )
 
@@ -88,16 +94,30 @@ class Inscription(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        - Génère le token UNE SEULE FOIS
-        - AUCUNE logique financière ici
+        - Génère public_token UNE SEULE FOIS
+        - Génère access_code UNE SEULE FOIS
+        - Aucune logique financière ici
         """
+
         if not self.public_token:
             self.public_token = self.generate_public_token()
+
+        if not self.access_code:
+            self.access_code = self.generate_access_code()
+
         super().save(*args, **kwargs)
 
+    # ==================================================
+    # GÉNÉRATEURS SÉCURISÉS
+    # ==================================================
     @staticmethod
     def generate_public_token():
         return f"ESFE-INS-{secrets.token_urlsafe(12)}"
+
+    @staticmethod
+    def generate_access_code():
+        # Code court mais sécurisé
+        return secrets.token_urlsafe(6)
 
     # ==================================================
     # URL PUBLIQUE
@@ -114,7 +134,7 @@ class Inscription(models.Model):
     def update_financial_state(self):
         """
         ⚠️ Appelée UNIQUEMENT par Payment après validation.
-        Cette méthode est DÉTERMINISTE.
+        Méthode DÉTERMINISTE.
         """
 
         total_paid = (

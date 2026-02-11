@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 
 {% block title %}
 Dossier d’inscription – {{ programme.title }} | ESFE
@@ -16,7 +17,34 @@ Dossier d’inscription – {{ programme.title }} | ESFE
     </p>
   </header>
 
+
+  <!-- ========================= -->
+  <!-- MESSAGES DJANGO (PROPRES) -->
+  <!-- ========================= -->
+  {% if messages %}
+    <div class="space-y-3">
+      {% for message in messages %}
+        <div class="p-4 rounded-lg text-sm font-medium
+          {% if message.tags == 'success' %}
+            bg-green-100 text-green-800
+          {% elif message.tags == 'error' %}
+            bg-red-100 text-red-800
+          {% elif message.tags == 'warning' %}
+            bg-orange-100 text-orange-800
+          {% else %}
+            bg-blue-100 text-blue-800
+          {% endif %}
+        ">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+
+  <!-- ========================= -->
   <!-- CANDIDAT -->
+  <!-- ========================= -->
   <section class="border rounded-lg p-6">
     <h2 class="font-semibold mb-2">👤 Candidat</h2>
     <p class="font-medium">
@@ -26,7 +54,10 @@ Dossier d’inscription – {{ programme.title }} | ESFE
     <p class="text-sm text-gray-600">{{ candidature.phone }}</p>
   </section>
 
+
+  <!-- ========================= -->
   <!-- FORMATION -->
+  <!-- ========================= -->
   <section class="border rounded-lg p-6">
     <h2 class="font-semibold mb-2">🎓 Formation</h2>
     <p class="font-medium">{{ programme.title }}</p>
@@ -35,9 +66,13 @@ Dossier d’inscription – {{ programme.title }} | ESFE
     </p>
   </section>
 
+
+  <!-- ========================= -->
   <!-- STATUT -->
+  <!-- ========================= -->
   <section class="border rounded-lg p-6">
     <h2 class="font-semibold mb-2">📂 État du dossier</h2>
+
     {% if inscription.status == "active" %}
       <p class="text-green-700 font-medium">✔ Inscription active</p>
     {% elif inscription.status == "created" %}
@@ -47,41 +82,56 @@ Dossier d’inscription – {{ programme.title }} | ESFE
     {% endif %}
   </section>
 
+
+  <!-- ========================= -->
   <!-- HISTORIQUE DES PAIEMENTS -->
+  <!-- ========================= -->
   <section class="border rounded-lg p-6">
     <h2 class="font-semibold mb-4">🧾 Historique des paiements</h2>
 
     {% if payments %}
       {% for payment in payments %}
         <div class="flex justify-between border-b py-3">
+
           <div>
             <p class="font-medium">
-              {{ payment.amount }} FCFA — {{ payment.get_method_display }}
+              {{ payment.amount|intcomma }} FCFA —
+              {{ payment.get_method_display }}
             </p>
+
             <p class="text-xs text-gray-500">
               {{ payment.created_at|date:"d/m/Y H:i" }}
             </p>
+
+            {% if payment.method == "cash" and payment.agent %}
+              <p class="text-xs text-gray-500">
+                Agent : {{ payment.agent.user.get_full_name }}
+              </p>
+            {% endif %}
           </div>
 
           <div class="text-right">
             {% if payment.status == "validated" %}
               <span class="text-green-700 font-semibold">✔ Validé</span>
+
               {% if payment.receipt_number %}
                 <div>
                   <a
                     href="{% url 'payments:receipt_pdf' payment.receipt_number %}"
-                    class="text-blue-600 text-sm underline"
-                  >
+                    class="text-blue-600 text-sm underline">
                     Télécharger le reçu
                   </a>
                 </div>
               {% endif %}
+
             {% elif payment.status == "pending" %}
               <span class="text-orange-600">⏳ En attente</span>
+
             {% else %}
               <span class="text-red-600">✖ Annulé</span>
             {% endif %}
           </div>
+
         </div>
       {% endfor %}
     {% else %}
@@ -89,37 +139,86 @@ Dossier d’inscription – {{ programme.title }} | ESFE
     {% endif %}
   </section>
 
-  <!-- SITUATION FINANCIÈRE + FORMULAIRE -->
-  <section class="border rounded-lg p-6 space-y-4">
+
+  <!-- ========================= -->
+  <!-- SITUATION FINANCIÈRE -->
+  <!-- ========================= -->
+  <section class="border rounded-lg p-6 space-y-6">
     <h2 class="font-semibold">💰 Situation financière</h2>
 
     <div class="grid grid-cols-3 gap-4 text-sm">
       <div>
         <p class="text-gray-500">Total</p>
-        <p class="font-semibold">{{ inscription.amount_due }} FCFA</p>
+        <p class="font-semibold">
+          {{ inscription.amount_due|intcomma }} FCFA
+        </p>
       </div>
       <div>
         <p class="text-gray-500">Payé</p>
-        <p class="font-semibold">{{ inscription.amount_paid }} FCFA</p>
+        <p class="font-semibold">
+          {{ inscription.amount_paid|intcomma }} FCFA
+        </p>
       </div>
       <div>
         <p class="text-gray-500">Solde</p>
-        <p class="font-semibold">{{ inscription.balance }} FCFA</p>
+        <p class="font-semibold">
+          {{ inscription.balance|intcomma }} FCFA
+        </p>
       </div>
     </div>
 
-    {% if can_pay %}
+
+    <!-- ========================= -->
+    <!-- FORMULAIRE DE PAIEMENT -->
+    <!-- ========================= -->
+    {% if can_pay and payment_form %}
+
       <form method="post"
             action="{% url 'payments:student_initiate' inscription.public_token %}"
-            class="space-y-4">
+            class="space-y-6">
+
         {% csrf_token %}
-        {{ payment_form.as_p }}
+
+        {% if payment_form.non_field_errors %}
+          <div class="bg-red-100 text-red-700 p-4 rounded-lg text-sm">
+            {{ payment_form.non_field_errors }}
+          </div>
+        {% endif %}
+
+        <div class="space-y-4">
+
+          <div>
+            {{ payment_form.method.label_tag }}
+            {{ payment_form.method }}
+            {{ payment_form.method.errors }}
+          </div>
+
+          <div>
+            {{ payment_form.agent_name.label_tag }}
+            {{ payment_form.agent_name }}
+            {{ payment_form.agent_name.errors }}
+          </div>
+
+          <div>
+            {{ payment_form.verification_code.label_tag }}
+            {{ payment_form.verification_code }}
+            {{ payment_form.verification_code.errors }}
+          </div>
+
+          <div>
+            {{ payment_form.amount.label_tag }}
+            {{ payment_form.amount }}
+            {{ payment_form.amount.errors }}
+          </div>
+
+        </div>
 
         <button
           type="submit"
-          class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold">
+          class="w-full bg-blue-600 hover:bg-blue-700 transition text-white py-3 rounded-lg font-semibold">
           Envoyer la demande de paiement
         </button>
+
       </form>
 
     {% elif has_pending_payment %}
@@ -132,6 +231,7 @@ Dossier d’inscription – {{ programme.title }} | ESFE
         ✔ Tous les frais sont réglés.
       </p>
     {% endif %}
+
   </section>
 
 </section>

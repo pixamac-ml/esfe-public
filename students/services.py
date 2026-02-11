@@ -1,39 +1,51 @@
 import secrets
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+from django.db import transaction
+
 from students.models import Student
+
+User = get_user_model()
 
 
 def create_student_after_first_payment(inscription):
     """
-    Crée le compte étudiant UNE SEULE FOIS
-    après le premier paiement validé.
+    Création robuste et idempotente du compte étudiant.
+    Gère les cas orphelins et doublons historiques.
     """
 
-    # 🔒 Sécurité absolue
-    if hasattr(inscription, "student"):
-        return None  # étudiant déjà créé
-
     candidature = inscription.candidature
+    username = f"etu_esfe{inscription.id}"
 
-    # Identifiants
-    username = f"etu_{inscription.id}"
-    password = secrets.token_urlsafe(8)
+    with transaction.atomic():
 
-    user = User.objects.create_user(
-        username=username,
-        email=candidature.email,
-        password=password,
-        first_name=candidature.first_name,
-        last_name=candidature.last_name,
-    )
+        # 1️⃣ Vérifier si un Student existe déjà
+        existing_student = Student.objects.filter(inscription=inscription).first()
+        if existing_student:
+            return None
 
-    student = Student.objects.create(
-        user=user,
-        inscription=inscription,
-        matricule=f"ESFE-{inscription.id:05d}"
-    )
+        # 2️⃣ Vérifier si un User existe déjà avec ce username
+        user = User.objects.filter(username=username).first()
+
+        raw_password = None
+
+        if not user:
+            raw_password = secrets.token_urlsafe(8)
+            user = User.objects.create_user(
+                username=username,
+                email=candidature.email,
+                password=raw_password,
+                first_name=candidature.first_name,
+                last_name=candidature.last_name,
+            )
+
+        # 3️⃣ Créer le Student lié
+        student = Student.objects.create(
+            user=user,
+            inscription=inscription,
+            matricule=f"ESFE-{inscription.id:05d}"
+        )
 
     return {
         "student": student,
-        "password": password,  # À utiliser plus tard pour l’email
+        "password": raw_password,
     }

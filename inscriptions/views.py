@@ -13,8 +13,8 @@ def inscription_public_detail(request, token):
 
     RÈGLES :
     - L’inscription DOIT exister
+    - Accès protégé par access_code
     - Une inscription suspendue n’est pas payable
-    - Le formulaire n’apparaît que si un paiement est autorisé
     """
 
     inscription = get_object_or_404(
@@ -22,17 +22,43 @@ def inscription_public_detail(request, token):
         public_token=token
     )
 
-    # 🔒 Inscription suspendue → accès lecture seule
+    # =====================================================
+    # 🔐 SÉCURISATION PAR CODE D’ACCÈS
+    # =====================================================
+    session_key = f"inscription_access_{inscription.id}"
+
+    # Si accès non validé
+    if not request.session.get(session_key):
+
+        if request.method == "POST":
+            entered_code = request.POST.get("access_code", "").strip()
+
+            if entered_code == inscription.access_code:
+                request.session[session_key] = True
+            else:
+                return render(
+                    request,
+                    "inscriptions/access_required.html",
+                    {"error": "Code d’accès incorrect."}
+                )
+        else:
+            return render(
+                request,
+                "inscriptions/access_required.html"
+            )
+
+    # =====================================================
+    # 🔒 BLOQUER SI SUSPENDUE
+    # =====================================================
     if inscription.status == "suspended":
         raise Http404("Ce dossier est temporairement indisponible.")
 
-    # Historique des paiements (ordre logique)
-    payments = (
-        inscription.payments
-        .order_by("-paid_at")
-    )
+    # =====================================================
+    # HISTORIQUE DES PAIEMENTS
+    # =====================================================
+    payments = inscription.payments.order_by("-paid_at")
 
-    # Paiement en attente (blocage formulaire)
+    # Paiement en attente
     has_pending_payment = payments.filter(status="pending").exists()
 
     # Autorisation de paiement
@@ -42,25 +68,33 @@ def inscription_public_detail(request, token):
         and not has_pending_payment
     )
 
+    # =====================================================
+    # INITIALISATION FORMULAIRE
+    # =====================================================
+    payment_form = None
+
+    if can_pay:
+        payment_form = StudentPaymentForm(
+            inscription=inscription
+        )
+
+    # =====================================================
+    # CONTEXTE FINAL
+    # =====================================================
     context = {
         "inscription": inscription,
         "candidature": inscription.candidature,
         "programme": inscription.candidature.programme,
 
-        # Historique
         "payments": payments,
+        "payment_form": payment_form,
 
-        # Formulaire étudiant (contrôlé)
-        "payment_form": StudentPaymentForm() if can_pay else None,
-
-        # Dernier reçu validé
         "receipt_payment": (
             payments
             .filter(status="validated", receipt_number__isnull=False)
             .first()
         ),
 
-        # Flags de contrôle (optionnel pour le template)
         "can_pay": can_pay,
         "has_pending_payment": has_pending_payment,
     }
