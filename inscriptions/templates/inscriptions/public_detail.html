@@ -236,4 +236,74 @@ Dossier d’inscription – {{ programme.title }} | ESFE
 
 </section>
 
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const agentInput = document.getElementById("id_agent_name");
+
+    if (!agentInput) return;
+
+    const statusDiv = document.createElement("div");
+    statusDiv.classList.add("text-sm", "mt-2");
+    agentInput.parentNode.appendChild(statusDiv);
+
+    let timeout = null;
+
+    agentInput.addEventListener("input", function () {
+
+        clearTimeout(timeout);
+
+        const value = this.value.trim();
+
+        if (value.length < 3) {
+            resetState();
+            return;
+        }
+
+        timeout = setTimeout(() => {
+
+            statusDiv.innerHTML = "Recherche...";
+            agentInput.classList.remove("border-red-500", "border-green-500");
+
+            fetch(`/payments/verify-agent/?name=${encodeURIComponent(value)}`)
+                .then(response => response.json())
+                .then(data => {
+
+                    if (data.valid) {
+                        agentInput.classList.add("border-green-500");
+                        agentInput.classList.remove("border-red-500");
+
+                        statusDiv.innerHTML =
+                            `<span class="text-green-600 font-medium">
+                                Agent validé : ${data.full_name} (${data.agent_code})
+                            </span>`;
+
+                        agentInput.readOnly = true;
+
+                    } else {
+                        agentInput.classList.add("border-red-500");
+                        agentInput.classList.remove("border-green-500");
+
+                        statusDiv.innerHTML =
+                            `<span class="text-red-600">
+                                Agent introuvable.
+                            </span>`;
+                    }
+                });
+
+        }, 500);
+
+    });
+
+    function resetState() {
+        agentInput.classList.remove("border-red-500", "border-green-500");
+        statusDiv.innerHTML = "";
+        agentInput.readOnly = false;
+    }
+
+});
+</script>
+
+
 {% endblock %}

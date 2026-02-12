@@ -14,4 +14,6 @@ urlpatterns = [
         views.receipt_pdf,
         name="receipt_pdf",
     ),
+
+    path("verify-agent/", views.verify_agent_ajax, name="verify_agent_ajax"),
 ]

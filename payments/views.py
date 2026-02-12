@@ -2,10 +2,10 @@
 
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, JsonResponse
 
 from inscriptions.models import Inscription
-from payments.models import Payment
+from payments.models import Payment, PaymentAgent
 from payments.forms import StudentPaymentForm
 
 
@@ -27,8 +27,10 @@ def student_initiate_payment(request, token):
         inscription=inscription
     )
 
+    # ==============================
+    # FORMULAIRE INVALIDE
+    # ==============================
     if not form.is_valid():
-        # 🔥 On renvoie la page avec le form et ses erreurs
         payments = inscription.payments.order_by("-paid_at")
 
         context = {
@@ -50,7 +52,9 @@ def student_initiate_payment(request, token):
     amount = form.cleaned_data["amount"]
     method = form.cleaned_data["method"]
 
-    # Sécurité supplémentaire
+    # ==============================
+    # SÉCURITÉ MÉTIER
+    # ==============================
     if amount > inscription.balance:
         messages.error(request, "Le montant dépasse le solde restant.")
         return redirect(inscription.get_public_url())
@@ -62,17 +66,22 @@ def student_initiate_payment(request, token):
         )
         return redirect(inscription.get_public_url())
 
-    # =================================================
-    # Création Payment
-    # =================================================
-    Payment.objects.create(
-        inscription=inscription,
-        amount=amount,
-        method=method,
-        status="pending",
-        reference="INITIATED_BY_STUDENT",
-        agent=form.agent if method == "cash" else None
-    )
+    # ==============================
+    # CRÉATION PAIEMENT
+    # ==============================
+    payment_data = {
+        "inscription": inscription,
+        "amount": amount,
+        "method": method,
+        "status": "pending",
+        "reference": "INITIATED_BY_STUDENT",
+    }
+
+    # Si paiement cash → rattacher agent
+    if method == "cash":
+        payment_data["agent"] = form.agent
+
+    Payment.objects.create(**payment_data)
 
     messages.success(
         request,
@@ -124,3 +133,46 @@ def receipt_pdf(request, receipt_number):
         as_attachment=True,
         filename=f"recu-{payment.receipt_number}.pdf"
     )
+
+
+# ==================================================
+# AJAX – VÉRIFICATION AGENT
+# ==================================================
+def verify_agent_ajax(request):
+    """
+    Vérifie dynamiquement si un agent existe.
+    Recherche robuste prénom + nom.
+    """
+
+    name = request.GET.get("name", "").strip()
+
+    if not name:
+        return JsonResponse({"valid": False})
+
+    parts = name.split()
+
+    queryset = PaymentAgent.objects.select_related("user").filter(
+        is_active=True
+    )
+
+    # Recherche intelligente
+    if len(parts) == 1:
+        queryset = queryset.filter(
+            user__first_name__iexact=parts[0]
+        )
+    elif len(parts) >= 2:
+        queryset = queryset.filter(
+            user__first_name__iexact=parts[0],
+            user__last_name__iexact=parts[1]
+        )
+
+    agent = queryset.first()
+
+    if not agent:
+        return JsonResponse({"valid": False})
+
+    return JsonResponse({
+        "valid": True,
+        "full_name": agent.user.get_full_name(),
+        "agent_code": agent.agent_code,
+    })
